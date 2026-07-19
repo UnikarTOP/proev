@@ -18,7 +18,7 @@ import { Module } from '@nestjs/common';
 import { AdminModule as AdminJSNestModule } from '@adminjs/nestjs';
 import AdminJS from 'adminjs';
 import { Database, Resource, getModelByName } from '@adminjs/prisma';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
