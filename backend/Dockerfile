@@ -1,5 +1,9 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 WORKDIR /app
+
+# Prisma engine требует OpenSSL — на node:20-alpine с этим часто проблемы
+# (несовпадение версий musl/openssl), поэтому используем Debian-based slim-образ.
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
