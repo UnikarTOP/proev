@@ -62,12 +62,16 @@ fi
 if [[ ! -f .env ]]; then
   log "Создаю .env"
   RANDOM_PASSWORD="$(openssl rand -base64 24 | tr -d '=+/')"
+  ADMIN_COOKIE_SECRET_VAL="$(openssl rand -base64 32 | tr -d '=+/')"
+  ADMIN_SESSION_SECRET_VAL="$(openssl rand -base64 32 | tr -d '=+/')"
   cat > .env << EOF
 POSTGRES_DB=proev
 POSTGRES_USER=proev
 POSTGRES_PASSWORD=${RANDOM_PASSWORD}
+ADMIN_COOKIE_SECRET=${ADMIN_COOKIE_SECRET_VAL}
+ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET_VAL}
 EOF
-  echo "Сгенерирован пароль БД и сохранён в .env (никуда больше не публикуй этот файл)."
+  echo "Сгенерированы пароль БД и секреты сессии админки, сохранены в .env (никуда больше не публикуй этот файл)."
 else
   log ".env уже существует — использую его"
 fi
@@ -103,6 +107,23 @@ $DOCKER compose ps
 # ---------- 6. Seed данных ----------
 log "Наполняю карту станциями (OpenChargeMap + ручной список, если есть)"
 $DOCKER compose exec -T backend npm run seed || warn "Seed завершился с ошибкой — глянь логи: docker compose logs backend"
+
+# ---------- 6.5 Первый администратор ----------
+if ! $DOCKER compose exec -T postgres psql -U "${POSTGRES_USER:-proev}" -d "${POSTGRES_DB:-proev}" -tAc \
+    "SELECT 1 FROM \"User\" WHERE role = 'admin' LIMIT 1;" 2>/dev/null | grep -q 1; then
+  echo
+  read -rp "Администратора ещё нет. Создать сейчас? [Y/n] " CREATE_ADMIN
+  if [[ "${CREATE_ADMIN:-Y}" =~ ^[Yy]?$ ]]; then
+    read -rp "Email администратора: " ADMIN_EMAIL
+    read -rsp "Пароль (минимум 8 символов): " ADMIN_PASSWORD
+    echo
+    $DOCKER compose exec -T backend npm run create-admin -- "$ADMIN_EMAIL" "$ADMIN_PASSWORD" admin
+  else
+    warn "Пропущено. Создать позже: docker compose exec backend npm run create-admin -- email пароль admin"
+  fi
+else
+  log "Администратор уже есть — пропускаю создание"
+fi
 
 # ---------- 7. Проверка ----------
 log "Проверяю API"

@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   user
   partner
+  moderator
   admin
 }
 
@@ -33,13 +34,14 @@ enum LeadStatus {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String?  @unique
-  phone     String?  @unique
-  name      String?
-  avatarUrl String?
-  role      UserRole @default(user)
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  email        String?  @unique
+  phone        String?  @unique
+  name         String?
+  avatarUrl    String?
+  role         UserRole @default(user)
+  passwordHash String?  // только для admin/moderator — вход в /admin. Обычные пользователи сайта пока без пароля.
+  createdAt    DateTime @default(now())
 
   stations         ChargingStation[] @relation("AddedStations")
   reviews          StationReview[]
