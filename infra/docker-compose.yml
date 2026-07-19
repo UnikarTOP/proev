@@ -1,0 +1,67 @@
+# Продакшн-окружение для proev.ru на любом VPS (Ubuntu 22.04+).
+# Поднимает: PostgreSQL с PostGIS, бэкенд (NestJS), Caddy как reverse-proxy с авто-HTTPS.
+#
+# Запуск: docker compose up -d
+# (см. infra/README.md за пошаговой инструкцией)
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-proev}
+      POSTGRES_USER: ${POSTGRES_USER:-proev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Порт НЕ пробрасываем наружу — доступ только из docker-сети.
+    # Если нужен доступ снаружи для отладки, раскомментируйте и ограничьте firewall'ом:
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-proev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-proev}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-proev}?schema=public
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    # Порт тоже не пробрасываем напрямую — только через Caddy (см. ниже).
+    expose:
+      - "3001"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

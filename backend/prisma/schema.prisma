@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  partner
+  admin
+}
+
+enum StationStatus {
+  working
+  broken
+  unknown
+}
+
+enum ChargingSpeed {
+  slow
+  fast
+  ultra_fast
+}
+
+enum LeadStatus {
+  new
+  contacted
+  converted
+  rejected
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  phone     String?  @unique
+  name      String?
+  avatarUrl String?
+  role      UserRole @default(user)
+  createdAt DateTime @default(now())
+
+  stations         ChargingStation[] @relation("AddedStations")
+  reviews          StationReview[]
+  leads            Lead[]
+  articles         Article[]
+}
+
+model ChargingStation {
+  id              String         @id @default(uuid())
+  name            String
+  networkOperator String?
+  latitude        Float
+  longitude       Float
+  address         String?
+  city            String?
+  connectorTypes  String[]       // ['CCS2', 'GBT', 'Type2']
+  chargingSpeed   ChargingSpeed  @default(fast)
+  powerKw         Float?
+  priceInfo       String?
+  status          StationStatus  @default(unknown)
+  photos          String[]
+  verified        Boolean        @default(false)
+
+  addedById String?
+  addedBy   User?   @relation("AddedStations", fields: [addedById], references: [id])
+
+  reviews   StationReview[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([city])
+  @@index([latitude, longitude])
+}
+
+model StationReview {
+  id           String        @id @default(uuid())
+  stationId    String
+  station      ChargingStation @relation(fields: [stationId], references: [id])
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  statusReport StationStatus
+  comment      String?
+  rating       Int?          // 1..5
+  photos       String[]
+  createdAt    DateTime      @default(now())
+}
+
+model ServiceCategory {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  providers ServiceProvider[]
+}
+
+model ServiceProvider {
+  id             String   @id @default(uuid())
+  name           String
+  categoryId     String
+  category       ServiceCategory @relation(fields: [categoryId], references: [id])
+  city           String?
+  latitude       Float?
+  longitude      Float?
+  description    String?
+  logoUrl        String?
+  phone          String?
+  website        String?
+  isPaidPlacement Boolean @default(false)
+  ratingAvg      Float?
+
+  leads     Lead[]
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id         String     @id @default(uuid())
+  providerId String
+  provider   ServiceProvider @relation(fields: [providerId], references: [id])
+  userId     String?
+  user       User?      @relation(fields: [userId], references: [id])
+  name       String
+  phone      String
+  message    String?
+  status     LeadStatus @default(new)
+  createdAt  DateTime   @default(now())
+}
+
+model Article {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  content     String
+  coverImage  String?
+  authorId    String?
+  author      User?    @relation(fields: [authorId], references: [id])
+  seoMeta     Json?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+}

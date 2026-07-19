@@ -1,0 +1,16 @@
+[
+  {
+    "_comment": "Это ШАБЛОН, а не реальные данные. Скопируйте файл в manual-stations.json и замените значения на станции, которые вы сами нашли и проверили — например, на сайтах операторов (Яндекс.Заправки, Россети, Sitronics), на data.mos.ru/opendata/7704786030-elektrozapravki или на transport.mos.ru/electro/address. Координаты берите из карты оператора, не выдумывайте.",
+    "id": "example-001",
+    "name": "Пример: название точки зарядки",
+    "networkOperator": "Название оператора сети",
+    "latitude": 55.7558,
+    "longitude": 37.6173,
+    "address": "Точный адрес",
+    "city": "Москва",
+    "connectorTypes": ["CCS2", "Type2"],
+    "chargingSpeed": "fast",
+    "powerKw": 60,
+    "priceInfo": "например: 18 руб/кВт·ч"
+  }
+]
