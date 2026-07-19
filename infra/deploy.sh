@@ -80,6 +80,7 @@ fi
 CURRENT_DOMAIN="$(grep -m1 -oE '^[a-zA-Z0-9.-]+' Caddyfile || true)"
 if [[ -z "${DOMAIN:-}" ]]; then
   read -rp $'\nВведи домен для API (например api.proev.ru), либо Enter чтобы оставить "'"${CURRENT_DOMAIN}"$'": ' INPUT_DOMAIN
+  INPUT_DOMAIN="${INPUT_DOMAIN%$'\r'}"
   DOMAIN="${INPUT_DOMAIN:-$CURRENT_DOMAIN}"
 fi
 
@@ -90,6 +91,7 @@ fi
 
 warn "Убедись, что A-запись ${DOMAIN} → IP этого сервера уже создана и успела распространиться (иначе Caddy не сможет выпустить HTTPS-сертификат)."
 read -rp "Продолжить деплой? [Y/n] " CONFIRM
+CONFIRM="${CONFIRM%$'\r'}"
 [[ "${CONFIRM:-Y}" =~ ^[Yy]?$ ]] || die "Остановлено пользователем."
 
 # ---------- 5. Собрать и запустить ----------
@@ -113,10 +115,13 @@ if ! $DOCKER compose exec -T postgres psql -U "${POSTGRES_USER:-proev}" -d "${PO
     "SELECT 1 FROM \"User\" WHERE role = 'admin' LIMIT 1;" 2>/dev/null | grep -q 1; then
   echo
   read -rp "Администратора ещё нет. Создать сейчас? [Y/n] " CREATE_ADMIN
+  CREATE_ADMIN="${CREATE_ADMIN%$'\r'}"   # на случай \r от некоторых SSH-клиентов на Windows
   if [[ "${CREATE_ADMIN:-Y}" =~ ^[Yy]?$ ]]; then
     read -rp "Email администратора: " ADMIN_EMAIL
+    ADMIN_EMAIL="${ADMIN_EMAIL%$'\r'}"
     read -rsp "Пароль (минимум 8 символов): " ADMIN_PASSWORD
     echo
+    ADMIN_PASSWORD="${ADMIN_PASSWORD%$'\r'}"
     $DOCKER compose exec -T backend npm run create-admin -- "$ADMIN_EMAIL" "$ADMIN_PASSWORD" admin
   else
     warn "Пропущено. Создать позже: docker compose exec backend npm run create-admin -- email пароль admin"
