@@ -15,13 +15,20 @@
  */
 
 import { Module } from '@nestjs/common';
-import { AdminModule as AdminJSNestModule } from '@adminjs/nestjs';
-import AdminJS from 'adminjs';
-import { Database, Resource, getModelByName } from '@adminjs/prisma';
 import * as bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
+
+// require() вместо import — пакеты AdminJS используют современный формат
+// "exports" в package.json, из-за которого TypeScript в CommonJS-режиме не
+// может корректно зарезолвить их типы (несовместимо с module: "commonjs"
+// без смены на node16/nodenext, что потребовало бы менять формат импортов
+// во всём проекте). require() решает это ценой типизации именно этих
+// трёх символов — их использование ниже минимально и в комментариях.
+const { AdminModule: AdminJSNestModule } = require('@adminjs/nestjs');
+const AdminJS = require('adminjs').default ?? require('adminjs');
+const { Database, Resource, getModelByName } = require('@adminjs/prisma');
 
 AdminJS.registerAdapter({ Database, Resource });
 
@@ -119,7 +126,14 @@ function buildResource(modelName: string, prisma: PrismaService, options: Record
             if (!user?.passwordHash) return null;
             if (!['admin', 'moderator'].includes(user.role)) return null;
             const ok = await bcrypt.compare(password, user.passwordHash);
-            return ok ? user : null;
+            if (!ok) return null;
+            // Явно собираем объект под ожидаемый AdminJS-типом CurrentAdmin
+            // (там email обязателен как string, а в нашей схеме — nullable).
+            return {
+              id: user.id,
+              email: user.email ?? email,
+              role: user.role,
+            };
           },
           cookieName: 'proev-admin',
           cookiePassword: process.env.ADMIN_COOKIE_SECRET || 'change-me-in-env',
