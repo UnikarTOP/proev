@@ -22,7 +22,15 @@ const prisma = new PrismaClient();
 
 const OCM_API = 'https://api.openchargemap.io/v3/poi/';
 const COUNTRY_CODE = 'RU';
-const MAX_RESULTS = 2000; // OCM отдаёт максимум ~2000-3000 за запрос без пагинации по offset
+const PAGE_SIZE = 250; // мельче страницы — меньше шанс обрыва соединения на середине ответа
+const MAX_PAGES = 12; // до 3000 станций суммарно
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 3000;
+const FETCH_TIMEOUT_MS = 30_000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 interface OcmConnection {
   ConnectionType?: { Title?: string };
@@ -79,6 +87,39 @@ async function ensureDefaultIntegrations() {
   }
 }
 
+async function fetchWithRetry(url: string, apiKey: string): Promise<OcmPoi[]> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'proev.ru-seed-script/1.0 (+https://proev.ru)',
+          Accept: 'application/json',
+          'X-API-Key': apiKey,
+        },
+      });
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        throw new Error(`OpenChargeMap API ответил ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      clearTimeout(timeout);
+      lastError = err;
+      console.log(`  Попытка ${attempt}/${MAX_RETRIES} не удалась (${(err as Error).message}), жду ${RETRY_DELAY_MS}мс...`);
+      if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS);
+    }
+  }
+
+  throw lastError;
+}
+
 async function fetchOcmStations(): Promise<OcmPoi[]> {
   const integration = await prisma.integration.findUnique({ where: { key: 'openchargemap' } });
   const apiKey = (integration?.isEnabled ? integration.apiKey : null) || process.env.OCM_API_KEY;
@@ -91,22 +132,21 @@ async function fetchOcmStations(): Promise<OcmPoi[]> {
     );
   }
 
-  const url = `${OCM_API}?output=json&countrycode=${COUNTRY_CODE}&maxresults=${MAX_RESULTS}&compact=true&verbose=false`;
-  console.log(`Загружаю станции из OpenChargeMap: ${url}`);
-  const res = await fetch(url, {
-    headers: {
-      // Без User-Agent некоторые запросы блокируются как похожие на ботов
-      // (Node.js fetch по умолчанию не отправляет такой заголовок, в
-      // отличие от браузеров).
-      'User-Agent': 'proev.ru-seed-script/1.0 (+https://proev.ru)',
-      Accept: 'application/json',
-      'X-API-Key': apiKey,
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`OpenChargeMap API ответил ${res.status}`);
+  const allStations: OcmPoi[] = [];
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const url = `${OCM_API}?output=json&countrycode=${COUNTRY_CODE}&maxresults=${PAGE_SIZE}&offset=${offset}&compact=true&verbose=false`;
+    console.log(`Загружаю станции из OpenChargeMap (страница ${page + 1}, offset ${offset})...`);
+
+    const pois = await fetchWithRetry(url, apiKey);
+    allStations.push(...pois);
+    console.log(`  Получено ${pois.length} станций (всего пока: ${allStations.length})`);
+
+    if (pois.length < PAGE_SIZE) break; // это была последняя страница
   }
-  return res.json();
+
+  return allStations;
 }
 
 async function importOcmStations() {
