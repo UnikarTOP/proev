@@ -101,6 +101,24 @@ async function mountAdmin(app: any) {
         actions: { delete: { isAccessible: isAdmin } },
       }),
       buildResource('Article', { navigation: { name: 'Блог' } }),
+      buildResource('Integration', {
+        navigation: { name: 'Интеграции' },
+        listProperties: ['key', 'name', 'isEnabled', 'updatedAt'],
+        editProperties: ['key', 'name', 'apiKey', 'extraConfig', 'isEnabled'],
+        properties: {
+          // Ключ показываем только на странице редактирования, не в общем списке —
+          // чтобы не светился при простом просмотре таблицы.
+          apiKey: { isVisible: { list: false, show: true, edit: true, filter: false } },
+        },
+        // Ключи внешних сервисов — зона ответственности только владельца.
+        actions: {
+          list: { isAccessible: isAdmin },
+          show: { isAccessible: isAdmin },
+          edit: { isAccessible: isAdmin },
+          new: { isAccessible: isAdmin },
+          delete: { isAccessible: isAdmin },
+        },
+      }),
       buildResource('User', {
         navigation: { name: 'Пользователи' },
         properties: { passwordHash: { isVisible: false } },

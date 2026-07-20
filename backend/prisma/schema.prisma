@@ -34,6 +34,17 @@ enum LeadStatus {
   rejected
 }
 
+model Integration {
+  id          String   @id @default(uuid())
+  key         String   @unique // стабильный идентификатор: 'openchargemap', 'yandex_maps', '2gis'
+  name        String   // человекочитаемое имя для админки
+  apiKey      String?  // сам ключ/токен
+  extraConfig Json?    // доп. настройки, если сервису нужно больше одного значения
+  isEnabled   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String?  @unique

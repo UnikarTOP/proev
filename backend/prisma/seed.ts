@@ -61,13 +61,33 @@ function speedFromKw(kw?: number): 'slow' | 'fast' | 'ultra_fast' {
   return 'slow';
 }
 
+// Заготовки интеграций — появляются в /admin -> Интеграции сразу после
+// первого запуска seed, останется только вписать значения и включить.
+async function ensureDefaultIntegrations() {
+  const defaults = [
+    { key: 'openchargemap', name: 'OpenChargeMap' },
+    { key: 'yandex_maps', name: 'Яндекс.Карты' },
+    { key: '2gis', name: '2GIS' },
+  ];
+
+  for (const d of defaults) {
+    await prisma.integration.upsert({
+      where: { key: d.key },
+      update: {}, // не перезаписываем, если уже настроено через админку
+      create: { key: d.key, name: d.name, isEnabled: false },
+    });
+  }
+}
+
 async function fetchOcmStations(): Promise<OcmPoi[]> {
-  const apiKey = process.env.OCM_API_KEY;
+  const integration = await prisma.integration.findUnique({ where: { key: 'openchargemap' } });
+  const apiKey = (integration?.isEnabled ? integration.apiKey : null) || process.env.OCM_API_KEY;
+
   if (!apiKey) {
     throw new Error(
-      'Не задан OCM_API_KEY. OpenChargeMap теперь требует бесплатный API-ключ: ' +
-        'зарегистрируйся на https://openchargemap.org, возьми ключ в профиле ' +
-        '(Profile -> Register for API Key), пропиши OCM_API_KEY=... в .env и перезапусти контейнер.',
+      'Не задан ключ OpenChargeMap. Впиши его в /admin -> Интеграции -> OpenChargeMap ' +
+        '(включи isEnabled) — бесплатный ключ берётся на https://openchargemap.org, ' +
+        'Profile -> Register for API Key. Либо для локальной разработки — переменная OCM_API_KEY в .env.',
     );
   }
 
@@ -169,6 +189,7 @@ async function importManualStations() {
 }
 
 async function main() {
+  await ensureDefaultIntegrations();
   await importOcmStations();
   await importManualStations();
 }
