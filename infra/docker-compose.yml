@@ -38,6 +38,7 @@ services:
       PORT: 3001
       ADMIN_COOKIE_SECRET: ${ADMIN_COOKIE_SECRET}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
+      OCM_API_KEY: ${OCM_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy

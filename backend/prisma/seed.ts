@@ -62,6 +62,15 @@ function speedFromKw(kw?: number): 'slow' | 'fast' | 'ultra_fast' {
 }
 
 async function fetchOcmStations(): Promise<OcmPoi[]> {
+  const apiKey = process.env.OCM_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'Не задан OCM_API_KEY. OpenChargeMap теперь требует бесплатный API-ключ: ' +
+        'зарегистрируйся на https://openchargemap.org, возьми ключ в профиле ' +
+        '(Profile -> Register for API Key), пропиши OCM_API_KEY=... в .env и перезапусти контейнер.',
+    );
+  }
+
   const url = `${OCM_API}?output=json&countrycode=${COUNTRY_CODE}&maxresults=${MAX_RESULTS}&compact=true&verbose=false`;
   console.log(`Загружаю станции из OpenChargeMap: ${url}`);
   const res = await fetch(url, {
@@ -71,6 +80,7 @@ async function fetchOcmStations(): Promise<OcmPoi[]> {
       // отличие от браузеров).
       'User-Agent': 'proev.ru-seed-script/1.0 (+https://proev.ru)',
       Accept: 'application/json',
+      'X-API-Key': apiKey,
     },
   });
   if (!res.ok) {
