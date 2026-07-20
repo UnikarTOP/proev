@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { Prisma } from '@prisma/client';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 
@@ -44,7 +43,6 @@ async function mountAdmin(app: any) {
   AdminJS.registerAdapter({ Database, Resource });
 
   const prisma: PrismaService = app.get(PrismaService);
-  const dmmf = (Prisma as any).dmmf;
 
   function isAdmin({ currentAdmin }: any) {
     return currentAdmin?.role === 'admin';
@@ -52,7 +50,7 @@ async function mountAdmin(app: any) {
 
   function buildResource(modelName: string, options: Record<string, unknown> = {}) {
     return {
-      resource: { model: getModelByName(modelName, dmmf), client: prisma },
+      resource: { model: getModelByName(modelName), client: prisma },
       options,
     };
   }
