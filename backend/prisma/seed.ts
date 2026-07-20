@@ -64,7 +64,15 @@ function speedFromKw(kw?: number): 'slow' | 'fast' | 'ultra_fast' {
 async function fetchOcmStations(): Promise<OcmPoi[]> {
   const url = `${OCM_API}?output=json&countrycode=${COUNTRY_CODE}&maxresults=${MAX_RESULTS}&compact=true&verbose=false`;
   console.log(`Загружаю станции из OpenChargeMap: ${url}`);
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: {
+      // Без User-Agent некоторые запросы блокируются как похожие на ботов
+      // (Node.js fetch по умолчанию не отправляет такой заголовок, в
+      // отличие от браузеров).
+      'User-Agent': 'proev.ru-seed-script/1.0 (+https://proev.ru)',
+      Accept: 'application/json',
+    },
+  });
   if (!res.ok) {
     throw new Error(`OpenChargeMap API ответил ${res.status}`);
   }
