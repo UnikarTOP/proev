@@ -64,32 +64,26 @@ if [[ ! -f .env ]]; then
   RANDOM_PASSWORD="$(openssl rand -base64 24 | tr -d '=+/')"
   ADMIN_COOKIE_SECRET_VAL="$(openssl rand -base64 32 | tr -d '=+/')"
   ADMIN_SESSION_SECRET_VAL="$(openssl rand -base64 32 | tr -d '=+/')"
+  DETECTED_PRIVATE_IP="$(ip -4 addr show | awk '/inet /{print $2}' | cut -d/ -f1 | grep -E '^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)' | head -1)"
+  read -rp $'\nПриватный IP этого сервера (Enter чтобы использовать определённый автоматически "'"${DETECTED_PRIVATE_IP:-не найден}"$'"): ' INPUT_PRIVATE_IP
+  INPUT_PRIVATE_IP="${INPUT_PRIVATE_IP%$'\r'}"
+  PRIVATE_IP="${INPUT_PRIVATE_IP:-$DETECTED_PRIVATE_IP}"
   cat > .env << EOF
 POSTGRES_DB=proev
 POSTGRES_USER=proev
 POSTGRES_PASSWORD=${RANDOM_PASSWORD}
 ADMIN_COOKIE_SECRET=${ADMIN_COOKIE_SECRET_VAL}
 ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET_VAL}
+PRIVATE_BIND_IP=${PRIVATE_IP}
 EOF
-  echo "Сгенерированы пароль БД и секреты сессии админки, сохранены в .env (никуда больше не публикуй этот файл)."
+  echo "Сгенерированы пароль БД и секреты сессии админки, приватный IP: ${PRIVATE_IP:-<не определён, впиши вручную в .env>}. Сохранено в .env (никуда больше не публикуй этот файл)."
 else
   log ".env уже существует — использую его"
 fi
 
-# ---------- 4. Домен для Caddy ----------
-CURRENT_DOMAIN="$(grep -m1 -oE '^[a-zA-Z0-9.-]+' Caddyfile || true)"
-if [[ -z "${DOMAIN:-}" ]]; then
-  read -rp $'\nВведи домен для API (например api.proev.ru), либо Enter чтобы оставить "'"${CURRENT_DOMAIN}"$'": ' INPUT_DOMAIN
-  INPUT_DOMAIN="${INPUT_DOMAIN%$'\r'}"
-  DOMAIN="${INPUT_DOMAIN:-$CURRENT_DOMAIN}"
-fi
-
-if [[ "$DOMAIN" != "$CURRENT_DOMAIN" ]]; then
-  log "Прописываю домен в Caddyfile: $DOMAIN"
-  sed -i "s/^${CURRENT_DOMAIN} {/${DOMAIN} {/" Caddyfile
-fi
-
-warn "Убедись, что A-запись ${DOMAIN} → IP этого сервера уже создана и успела распространиться (иначе Caddy не сможет выпустить HTTPS-сертификат)."
+# ---------- 4. Домен и TLS ----------
+warn "TLS и домен теперь настраиваются НЕ здесь, а в веб-интерфейсе Nginx Proxy Manager (или другого reverse-proxy перед этим сервером)."
+warn "Добавь в NPM Proxy Host: домен -> приватный IP этого сервера (см. PRIVATE_BIND_IP в .env), порт 3001, включи SSL."
 read -rp "Продолжить деплой? [Y/n] " CONFIRM
 CONFIRM="${CONFIRM%$'\r'}"
 [[ "${CONFIRM:-Y}" =~ ^[Yy]?$ ]] || die "Остановлено пользователем."
@@ -131,16 +125,10 @@ else
 fi
 
 # ---------- 7. Проверка ----------
-log "Проверяю API"
-sleep 3
-if curl -fsS "https://${DOMAIN}/api/stations" -o /tmp/proev_check.json 2>/dev/null; then
-  echo "OK — API отвечает: https://${DOMAIN}/api/stations"
-  echo "Станций в ответе: $(grep -o '"id"' /tmp/proev_check.json | wc -l)"
-else
-  warn "HTTPS ещё не готов или API не отвечает. Это нормально в первые 1-2 минуты (Caddy выпускает сертификат)."
-  echo "Проверь вручную чуть позже: curl https://${DOMAIN}/api/stations"
-  echo "И логи: docker compose logs -f caddy backend"
-fi
+BIND_IP="${PRIVATE_BIND_IP:-192.168.38.200}"
+log "Бэкенд поднят на приватном интерфейсе ${BIND_IP}:3001"
+echo "Проверить локально: curl http://${BIND_IP}:3001/api/stations"
+echo "Проверить снаружи — после настройки Proxy Host в NPM: curl https://твой-домен/api/stations"
 
 log "Готово. Полезные команды:"
 echo "  docker compose logs -f backend     — логи бэкенда"

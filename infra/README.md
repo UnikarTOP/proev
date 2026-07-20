@@ -1,99 +1,63 @@
 # Развёртывание на VPS
 
-Подходит для любого провайдера — Timeweb, Reg.ru, Selectel, Hetzner, DigitalOcean и т.д.
-Минимальные требования: Ubuntu 22.04+, 2 ГБ RAM, публичный IP.
+Эта инструкция описывает вариант, когда перед сервером стоит **Nginx Proxy
+Manager (NPM) на отдельной VM** в той же приватной сети — он и терминирует
+TLS/домен, а этот сервер отдаёт только API на приватном интерфейсе.
+
+Если у тебя нет отдельного NPM и нужен свой reverse-proxy с автоматическим
+HTTPS прямо на этом сервере — скажи, вернём Caddy в стек (это была
+предыдущая версия конфига, простая в разворачивании для одиночного VPS).
 
 ## Быстрый путь — один скрипт
 
 ```bash
-# на VPS, от пользователя с sudo-правами
 git clone <твой-репозиторий> proev
 cd proev/infra
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-Скрипт `deploy.sh` сам:
+Скрипт сам:
 1. Ставит Docker, если его нет
-2. Настраивает firewall (открыт только SSH, 80, 443 — БД и бэкенд наружу не торчат)
-3. Генерирует пароль для БД и создаёт `.env`, если его ещё нет
-4. Спросит домен для API (например `api.proev.ru`) и впишет его в `Caddyfile`
-5. Собирает и запускает Postgres+PostGIS, бэкенд, Caddy (HTTPS через Let's Encrypt)
-6. Прогоняет seed — наполняет карту станциями из OpenChargeMap
-7. Проверяет, что API отвечает по HTTPS
+2. Настраивает firewall
+3. Генерирует пароль БД, секреты сессии админки и определяет приватный IP
+   сервера (спросит подтверждение/поправку)
+4. Поднимает Postgres+PostGIS и бэкенд, публикует API **только на приватном
+   интерфейсе** (`PRIVATE_BIND_IP:3001` — снаружи недоступно)
+5. Прогоняет seed — наполняет карту станциями
+6. Спросит, создать ли первого администратора
 
-Скрипт идемпотентен — можно перезапускать (например после `git pull`) без побочных эффектов.
+## Настройка в NPM (отдельная VM)
 
-**Перед запуском:** добавь A-запись `api.proev.ru → IP сервера` у регистратора домена — без этого Caddy не сможет выпустить сертификат.
+Зайди в веб-интерфейс NPM (`http://IP-VM-с-NPM:81/`) и добавь **Proxy Host**:
 
-## Что нужно подготовить заранее
+- **Domain Names:** `api.proev.ru` (или твой домен)
+- **Forward Hostname/IP:** приватный IP этого сервера (тот же, что в `.env`
+  как `PRIVATE_BIND_IP`, например `192.168.38.200`)
+- **Forward Port:** `3001`
+- Вкладка **SSL** → Request a new SSL Certificate → Force SSL
 
-- VPS с Ubuntu 22.04+ (у любого провайдера)
-- Домен, у которого можно добавить A-запись (например поддомен `api.` от `proev.ru`)
-- SSH-доступ к серверу
+NPM сам выпустит и обновит сертификат Let's Encrypt — на этом сервере
+ничего для HTTPS настраивать не нужно.
+
+**Важно:** для этого нужна связность на уровне приватной сети между VM с
+NPM и этим сервером (обычно так и есть, если обе машины в одном приватном
+сегменте/VPC у одного провайдера). Если NPM не может достучаться —
+проверь, что обе VM видят друг друга: `ping <приватный-IP-другой-VM>`.
 
 ## После деплоя — подключить фронтенд
-
-В `frontend/.env.local` (или в переменных окружения хостинга фронтенда):
 
 ```
 NEXT_PUBLIC_API_URL=https://api.proev.ru/api
 ```
 
-## Ручные шаги (если скрипт не подошёл — например, другой дистрибутив)
-
-<details>
-<summary>Развернуть по шагам вручную</summary>
-
-### 1. Установить Docker
+## Полезные команды
 
 ```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-# перелогиньтесь (exit и снова ssh)
+docker compose logs -f backend           # логи бэкенда
+docker compose exec backend npm run seed # повторно наполнить карту
+docker compose exec backend npm run create-admin -- email пароль admin
+docker compose down                      # остановить всё
+git pull && ./deploy.sh                  # обновить и передеплоить
+curl http://ПРИВАТНЫЙ_IP:3001/api/stations   # проверка изнутри сети, минуя NPM
 ```
-
-### 2. Firewall
-
-```bash
-sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-```
-
-### 3. Настроить окружение
-
-```bash
-cd proev/infra
-cp .env.example .env
-nano .env   # вписать POSTGRES_PASSWORD (сгенерировать: openssl rand -base64 24)
-nano Caddyfile   # поправить домен на свой
-```
-
-### 4. Запустить
-
-```bash
-docker compose up -d --build
-docker compose logs -f backend   # убедиться, что миграции прошли без ошибок
-```
-
-### 5. Наполнить карту
-
-```bash
-docker compose exec backend npm run seed
-```
-
-### 6. Проверить
-
-```bash
-curl https://api.proev.ru/api/stations
-```
-
-</details>
-
-## Дальше
-
-- **Бэкапы БД**: `docker compose exec postgres pg_dump -U proev proev > backup.sql` (лучше по крону)
-- **Обновление кода**: `git pull && ./deploy.sh` (или `docker compose up -d --build`)
-- **Мониторинг**: для старта достаточно `docker compose logs -f`

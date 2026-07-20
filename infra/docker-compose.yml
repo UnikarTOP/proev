@@ -1,5 +1,7 @@
-# Продакшн-окружение для proev.ru на любом VPS (Ubuntu 22.04+).
-# Поднимает: PostgreSQL с PostGIS, бэкенд (NestJS), Caddy как reverse-proxy с авто-HTTPS.
+# Продакшн-окружение для proev.ru: PostgreSQL с PostGIS + бэкенд (NestJS).
+# TLS и домен терминирует внешний reverse-proxy (например Nginx Proxy
+# Manager на отдельной VM в приватной сети) — бэкенд открыт только на
+# приватном интерфейсе (см. PRIVATE_BIND_IP в .env).
 #
 # Запуск: docker compose up -d
 # (см. infra/README.md за пошаговой инструкцией)
@@ -41,29 +43,13 @@ services:
         condition: service_healthy
     networks:
       - internal
-    # Порт тоже не пробрасываем напрямую — только через Caddy (см. ниже).
-    expose:
-      - "3001"
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
+    # Порт открыт только на приватном интерфейсе — снаружи недоступен,
+    # NPM (отдельная VM в той же приватной сети) проксирует сюда напрямую.
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - backend
-    networks:
-      - internal
+      - "${PRIVATE_BIND_IP:-192.168.38.200}:3001:3001"
 
 networks:
   internal:
 
 volumes:
   postgres_data:
-  caddy_data:
-  caddy_config:

@@ -57,14 +57,16 @@ docker compose exec backend npm run create-admin -- moderator@proev.ru "паро
 ## Развёртывание
 
 Один скрипт разворачивает всё на чистом VPS: Docker, PostgreSQL + PostGIS,
-бэкенд, HTTPS, миграции и seed.
+бэкенд и миграции. TLS/домен терминирует внешний reverse-proxy (в т.ч.
+Nginx Proxy Manager на отдельной VM в приватной сети — так и было
+развёрнуто в проде).
 
 ```bash
 git clone <твой-репозиторий> proev && cd proev/infra
 chmod +x deploy.sh && ./deploy.sh
 ```
 
-Подробности и ручной путь (если что-то пошло не так) — в [`infra/README.md`](./infra/README.md).
+Подробности, включая настройку Proxy Host в NPM — в [`infra/README.md`](./infra/README.md).
 
 ## Наполнение карты станциями
 
