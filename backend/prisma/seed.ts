@@ -121,50 +121,63 @@ async function fetchWithRetry(url: string, apiKey: string): Promise<OcmPoi[]> {
   throw lastError;
 }
 
-async function fetchOcmStations(): Promise<OcmPoi[]> {
-  // Если есть локально скачанный дамп (см. prisma/seed-data/ocm-raw-dump.json) —
-  // используем его вместо сетевого запроса. Актуально, когда с конкретного
-  // сервера соединение до OpenChargeMap нестабильно/блокируется, но дамп
-  // можно получить с другой машины (см. infra/README.md, раздел про OCM).
-  const dumpPath = path.join(__dirname, 'seed-data', 'ocm-raw-dump.json');
-  if (fs.existsSync(dumpPath)) {
-    console.log(`Использую локальный дамп OpenChargeMap: ${dumpPath}`);
-    return JSON.parse(fs.readFileSync(dumpPath, 'utf-8'));
-  }
+async function importOcmStations() {
+  // Пишем в БД постранично — не ждём загрузки всех страниц.
+  // Так данные появляются в базе сразу, и Ctrl+C в любой момент сохраняет уже загруженное.
 
   const integration = await prisma.integration.findUnique({ where: { key: 'openchargemap' } });
   const apiKey = (integration?.isEnabled ? integration.apiKey : null) || process.env.OCM_API_KEY;
 
   if (!apiKey) {
+    const dumpPath = path.join(__dirname, 'seed-data', 'ocm-raw-dump.json');
+    if (fs.existsSync(dumpPath)) {
+      console.log(`Использую локальный дамп: ${dumpPath}`);
+      const pois: OcmPoi[] = JSON.parse(fs.readFileSync(dumpPath, 'utf-8'));
+      await savePoisToDb(pois);
+      return;
+    }
     throw new Error(
       'Не задан ключ OpenChargeMap. Впиши его в /admin -> Интеграции -> OpenChargeMap ' +
-        '(включи isEnabled) — бесплатный ключ берётся на https://openchargemap.org, ' +
-        'Profile -> Register for API Key. Либо для локальной разработки — переменная OCM_API_KEY в .env.',
+        '(включи isEnabled) — бесплатный ключ берётся на https://openchargemap.org.',
     );
   }
 
-  const allStations: OcmPoi[] = [];
+  let totalCreated = 0;
+  let totalSkipped = 0;
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const offset = page * PAGE_SIZE;
     const url = `${OCM_API}?output=json&countrycode=${COUNTRY_CODE}&maxresults=${PAGE_SIZE}&offset=${offset}&compact=true&verbose=false`;
     console.log(`Загружаю станции из OpenChargeMap (страница ${page + 1}, offset ${offset})...`);
 
-    const pois = await fetchWithRetry(url, apiKey);
-    allStations.push(...pois);
-    console.log(`  Получено ${pois.length} станций (всего пока: ${allStations.length})`);
+    let pois: OcmPoi[];
+    try {
+      pois = await fetchWithRetry(url, apiKey);
+    } catch (err) {
+      console.log(`  Пропускаю страницу ${page + 1} после всех попыток: ${(err as Error).message}`);
+      continue;
+    }
 
-    if (pois.length < PAGE_SIZE) break; // это была последняя страница
+    console.log(`  Получено ${pois.length} станций (всего загружено: ${(page) * PAGE_SIZE + pois.length})`);
+
+    // Сразу пишем в БД
+    const { created, skipped } = await savePoisToDb(pois);
+    totalCreated += created;
+    totalSkipped += skipped;
+    console.log(`  Сохранено в БД: ${created}, пропущено: ${skipped} (итого в БД: ${totalCreated})`);
+
+    if (pois.length < PAGE_SIZE) {
+      console.log('  Последняя страница — завершаем.');
+      break;
+    }
+
     await sleep(BETWEEN_PAGES_DELAY_MS);
   }
 
-  return allStations;
+  console.log(`\nИмпорт завершён. Всего сохранено: ${totalCreated}, пропущено (нет координат): ${totalSkipped}`);
 }
 
-async function importOcmStations() {
-  const pois = await fetchOcmStations();
-  console.log(`Получено ${pois.length} станций из OpenChargeMap`);
-
+async function savePoisToDb(pois: OcmPoi[]): Promise<{ created: number; skipped: number }> {
   let created = 0;
   let skipped = 0;
 
@@ -179,8 +192,6 @@ async function importOcmStations() {
     ) as string[];
 
     const maxPower = Math.max(0, ...(poi.Connections ?? []).map((c) => c.PowerKW ?? 0));
-
-    // externalId используем для идемпотентности — повторный запуск не создаст дубликаты
     const externalId = `ocm-${poi.ID}`;
 
     await prisma.chargingStation.upsert({
@@ -197,14 +208,14 @@ async function importOcmStations() {
         connectorTypes,
         chargingSpeed: speedFromKw(maxPower || undefined),
         powerKw: maxPower || null,
-        status: 'unknown', // статус узнаём только от пользователей, не от статичного импорта
+        status: 'unknown',
         verified: false,
       },
     });
     created++;
   }
 
-  console.log(`Импортировано/обновлено: ${created}, пропущено (нет координат): ${skipped}`);
+  return { created, skipped };
 }
 
 async function importManualStations() {
