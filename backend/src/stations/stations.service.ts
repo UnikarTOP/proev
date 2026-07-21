@@ -7,6 +7,18 @@ import { CreateReviewDto } from './dto/create-review.dto';
 export class StationsService {
   constructor(private prisma: PrismaService) {}
 
+  async getStats() {
+    const [stationCount, cityRows] = await Promise.all([
+      this.prisma.chargingStation.count(),
+      this.prisma.chargingStation.findMany({
+        where: { city: { not: null } },
+        select: { city: true },
+        distinct: ['city'],
+      }),
+    ]);
+    return { stationCount, cityCount: cityRows.length };
+  }
+
   findAll(params: { city?: string; connector?: string }) {
     return this.prisma.chargingStation.findMany({
       where: {

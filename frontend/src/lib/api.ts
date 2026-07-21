@@ -29,6 +29,11 @@ export interface ChargingStation {
   status: 'working' | 'broken' | 'unknown';
 }
 
+export interface StationStats {
+  stationCount: number;
+  cityCount: number;
+}
+
 export interface ServiceProvider {
   id: string;
   name: string;

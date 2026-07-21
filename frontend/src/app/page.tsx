@@ -1,6 +1,14 @@
 import { RouteStrip } from '@/components/RouteStrip';
+import { apiGet, type StationStats } from '@/lib/api';
 
-export default function HomePage() {
+export default async function HomePage() {
+  let stats: StationStats | null = null;
+  try {
+    stats = await apiGet<StationStats>('/stations/stats');
+  } catch {
+    stats = null; // бэкенд недоступен на этапе сборки/показа — секция ниже это учитывает
+  }
+
   return (
     <div>
       {/* ===== HERO ===== */}
@@ -65,9 +73,11 @@ export default function HomePage() {
 
       {/* ===== STATS ===== */}
       <div className="max-w-[1120px] mx-auto px-6 mt-16 pt-8 border-t border-line flex flex-wrap justify-between gap-6">
-        <Stat value="2 400+" label="станций на карте" />
-        <Stat value="89" label="городов" />
-        <Stat value="12 000+" label="водителей в сообществе" />
+        <Stat value={stats ? `${stats.stationCount}+` : '—'} label="станций на карте" />
+        <Stat value={stats ? String(stats.cityCount) : '—'} label="городов" />
+        {/* Число водителей в сообществе — пока нет системы аккаунтов/учёта,
+            честно показываем как цель, не выдавая за текущий факт. */}
+        <Stat value="Растущее" label="сообщество водителей" />
         <Stat value="24/7" label="актуальные статусы" />
       </div>
     </div>

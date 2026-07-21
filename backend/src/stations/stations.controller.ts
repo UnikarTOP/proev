@@ -25,6 +25,11 @@ export class StationsController {
     );
   }
 
+  @Get('stats')
+  getStats() {
+    return this.stationsService.getStats();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.stationsService.findOne(id);
