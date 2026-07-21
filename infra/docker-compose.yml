@@ -49,6 +49,20 @@ services:
     ports:
       - "${PRIVATE_BIND_IP:-192.168.38.200}:3001:3001"
 
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - internal
+    ports:
+      - "${PRIVATE_BIND_IP:-192.168.38.200}:3000:3000"
+
 networks:
   internal:
     driver_opts:

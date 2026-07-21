@@ -29,27 +29,26 @@ chmod +x deploy.sh
 
 ## Настройка в NPM (отдельная VM)
 
-Зайди в веб-интерфейс NPM (`http://IP-VM-с-NPM:81/`) и добавь **Proxy Host**:
+Зайди в веб-интерфейс NPM (`http://IP-VM-с-NPM:81/`) и добавь **два** Proxy Host:
 
-- **Domain Names:** `api.proev.ru` (или твой домен)
-- **Forward Hostname/IP:** приватный IP этого сервера (тот же, что в `.env`
-  как `PRIVATE_BIND_IP`, например `192.168.38.200`)
+**API (бэкенд):**
+- **Domain Names:** `api.proev.ru`
+- **Forward Hostname/IP:** приватный IP этого сервера (`PRIVATE_BIND_IP` в `.env`, например `192.168.38.200`)
 - **Forward Port:** `3001`
-- Вкладка **SSL** → Request a new SSL Certificate → Force SSL
+- SSL → Request a new SSL Certificate → Force SSL
 
-NPM сам выпустит и обновит сертификат Let's Encrypt — на этом сервере
-ничего для HTTPS настраивать не нужно.
+**Сайт (фронтенд):**
+- **Domain Names:** `proev.ru` (и `www.proev.ru`, если нужно)
+- **Forward Hostname/IP:** тот же приватный IP
+- **Forward Port:** `3000`
+- SSL → Request a new SSL Certificate → Force SSL
+
+NPM сам выпустит и обновит сертификаты Let's Encrypt для обоих доменов.
 
 **Важно:** для этого нужна связность на уровне приватной сети между VM с
 NPM и этим сервером (обычно так и есть, если обе машины в одном приватном
 сегменте/VPC у одного провайдера). Если NPM не может достучаться —
 проверь, что обе VM видят друг друга: `ping <приватный-IP-другой-VM>`.
-
-## После деплоя — подключить фронтенд
-
-```
-NEXT_PUBLIC_API_URL=https://api.proev.ru/api
-```
 
 ## Полезные команды
 

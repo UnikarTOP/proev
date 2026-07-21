@@ -68,6 +68,8 @@ if [[ ! -f .env ]]; then
   read -rp $'\nПриватный IP этого сервера (Enter чтобы использовать определённый автоматически "'"${DETECTED_PRIVATE_IP:-не найден}"$'"): ' INPUT_PRIVATE_IP
   INPUT_PRIVATE_IP="${INPUT_PRIVATE_IP%$'\r'}"
   PRIVATE_IP="${INPUT_PRIVATE_IP:-$DETECTED_PRIVATE_IP}"
+  read -rp $'\nПубличный URL API для фронтенда (например https://api.proev.ru/api): ' INPUT_API_URL
+  INPUT_API_URL="${INPUT_API_URL%$'\r'}"
   cat > .env << EOF
 POSTGRES_DB=proev
 POSTGRES_USER=proev
@@ -75,6 +77,7 @@ POSTGRES_PASSWORD=${RANDOM_PASSWORD}
 ADMIN_COOKIE_SECRET=${ADMIN_COOKIE_SECRET_VAL}
 ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET_VAL}
 PRIVATE_BIND_IP=${PRIVATE_IP}
+NEXT_PUBLIC_API_URL=${INPUT_API_URL}
 EOF
   echo "Сгенерированы пароль БД и секреты сессии админки, приватный IP: ${PRIVATE_IP:-<не определён, впиши вручную в .env>}. Сохранено в .env (никуда больше не публикуй этот файл)."
 else
