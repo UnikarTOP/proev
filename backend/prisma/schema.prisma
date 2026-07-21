@@ -155,6 +155,12 @@ model Article {
   createdAt   DateTime @default(now())
 }
 
+enum NewsStatus {
+  pending   // только что спарсили, ждёт модерации
+  approved  // одобрена, видна на сайте
+  rejected  // отклонена, не показывается
+}
+
 // Источник RSS-новостей — управляется через /admin -> Новости -> Источники.
 // Список редактируется без передеплоя: включаешь isEnabled, и cron-задача
 // начнёт забирать заголовки + выжимки от туда.
@@ -180,8 +186,10 @@ model NewsItem {
   imageUrl     String?
   publishedAt  DateTime?
   fetchedAt    DateTime    @default(now())
+  status       NewsStatus  @default(pending) // новости публикуются только после одобрения
   sourceId     String?
   source       NewsSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
 
   @@index([publishedAt])
+  @@index([status])
 }

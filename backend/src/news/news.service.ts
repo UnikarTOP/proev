@@ -57,6 +57,7 @@ export class NewsService {
             sourceName,
             imageUrl: item.enclosureUrl ?? null,
             publishedAt: item.pubDate ? new Date(item.pubDate) : null,
+            status: 'pending', // всегда на модерацию — публикуется только после одобрения в /admin
             sourceId,
           },
         });
@@ -154,6 +155,7 @@ export class NewsService {
   // Публичный API для получения новостей (используется фронтендом)
   async getLatest(limit = 20, offset = 0) {
     return this.prisma.newsItem.findMany({
+      where: { status: 'approved' }, // только прошедшие модерацию
       orderBy: { publishedAt: 'desc' },
       take: limit,
       skip: offset,
@@ -166,6 +168,15 @@ export class NewsService {
         imageUrl: true,
         publishedAt: true,
       },
+    });
+  }
+
+  // Для AdminJS — очередь на модерацию
+  async getPending(limit = 50) {
+    return this.prisma.newsItem.findMany({
+      where: { status: 'pending' },
+      orderBy: { fetchedAt: 'desc' },
+      take: limit,
     });
   }
 }
