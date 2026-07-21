@@ -122,6 +122,16 @@ async function fetchWithRetry(url: string, apiKey: string): Promise<OcmPoi[]> {
 }
 
 async function fetchOcmStations(): Promise<OcmPoi[]> {
+  // Если есть локально скачанный дамп (см. prisma/seed-data/ocm-raw-dump.json) —
+  // используем его вместо сетевого запроса. Актуально, когда с конкретного
+  // сервера соединение до OpenChargeMap нестабильно/блокируется, но дамп
+  // можно получить с другой машины (см. infra/README.md, раздел про OCM).
+  const dumpPath = path.join(__dirname, 'seed-data', 'ocm-raw-dump.json');
+  if (fs.existsSync(dumpPath)) {
+    console.log(`Использую локальный дамп OpenChargeMap: ${dumpPath}`);
+    return JSON.parse(fs.readFileSync(dumpPath, 'utf-8'));
+  }
+
   const integration = await prisma.integration.findUnique({ where: { key: 'openchargemap' } });
   const apiKey = (integration?.isEnabled ? integration.apiKey : null) || process.env.OCM_API_KEY;
 
