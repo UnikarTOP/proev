@@ -1,10 +1,9 @@
-# Скачивает все зарядные станции России из OpenChargeMap с ЭТОГО компьютера
-# (не с VPS — там нестабильное соединение с их API).
-# Результат — файл ocm-ru-raw.json, который нужно положить на сервер в
-# backend/prisma/seed-data/ocm-raw-dump.json и запустить npm run seed —
-# seed.ts автоматически подхватит его вместо сетевого запроса.
+# Downloads all RU charging stations from OpenChargeMap using THIS computer
+# (not the VPS - unreliable connection to their API from there).
+# Result: ocm-ru-raw.json - upload it to the server as
+# backend/prisma/seed-data/ocm-raw-dump.json, then run npm run seed there.
 
-$ApiKey = "06dbd9b7-8a0e-4c83-a57f-8034f7e636a7"  # твой ключ OpenChargeMap
+$ApiKey = "06dbd9b7-8a0e-4c83-a57f-8034f7e636a7"
 $PageSize = 200
 $MaxPages = 30
 $OutFile = "ocm-ru-raw.json"
@@ -14,31 +13,31 @@ $allStations = @()
 for ($page = 0; $page -lt $MaxPages; $page++) {
     $offset = $page * $PageSize
     $url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=RU&maxresults=$PageSize&offset=$offset&compact=true&verbose=false"
-    Write-Host "Страница $($page + 1), offset $offset..."
+    Write-Host "Page $($page + 1), offset $offset..."
 
     try {
         $response = Invoke-RestMethod -Uri $url -Headers @{
-            "User-Agent" = "proev.ru-local-fetch/1.0"
+            "User-Agent" = "proev-local-fetch/1.0"
             "X-API-Key"  = $ApiKey
             "Accept"     = "application/json"
         } -TimeoutSec 30
 
         if ($response.Count -eq 0) {
-            Write-Host "Пустая страница — это был конец данных."
+            Write-Host "Empty page - done."
             break
         }
 
         $allStations += $response
-        Write-Host "  Получено $($response.Count) станций (всего: $($allStations.Count))"
+        Write-Host "  Got $($response.Count) stations (total: $($allStations.Count))"
 
         if ($response.Count -lt $PageSize) {
-            Write-Host "Последняя страница (меньше $PageSize записей)."
+            Write-Host "Last page reached."
             break
         }
     }
     catch {
-        Write-Host "Ошибка на странице $($page + 1): $_"
-        Write-Host "Жду 3 секунды и пробую следующую страницу..."
+        Write-Host "Error on page $($page + 1): $_"
+        Write-Host "Waiting 3 seconds before next page..."
         Start-Sleep -Seconds 3
     }
 
@@ -47,5 +46,5 @@ for ($page = 0; $page -lt $MaxPages; $page++) {
 
 $allStations | ConvertTo-Json -Depth 10 | Out-File -FilePath $OutFile -Encoding utf8
 Write-Host ""
-Write-Host "Готово! Сохранено $($allStations.Count) станций в $OutFile"
-Write-Host "Дальше: закинь этот файл на сервер как backend/prisma/seed-data/ocm-raw-dump.json"
+Write-Host "Done! Saved $($allStations.Count) stations to $OutFile"
+Write-Host "Next: upload this file to the server as backend/prisma/seed-data/ocm-raw-dump.json"
