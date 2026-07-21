@@ -22,11 +22,12 @@ const prisma = new PrismaClient();
 
 const OCM_API = 'https://api.openchargemap.io/v3/poi/';
 const COUNTRY_CODE = 'RU';
-const PAGE_SIZE = 250; // мельче страницы — меньше шанс обрыва соединения на середине ответа
-const MAX_PAGES = 12; // до 3000 станций суммарно
+const PAGE_SIZE = 10; // тестами выяснили: 5 станций проходят быстро, 20+ зависают на этом VPS — берём с запасом
+const MAX_PAGES = 400; // до 4000 станций суммарно
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 3000;
-const FETCH_TIMEOUT_MS = 30_000;
+const RETRY_DELAY_MS = 2000;
+const FETCH_TIMEOUT_MS = 20_000;
+const BETWEEN_PAGES_DELAY_MS = 400; // небольшая пауза между запросами, на всякий случай
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -144,6 +145,7 @@ async function fetchOcmStations(): Promise<OcmPoi[]> {
     console.log(`  Получено ${pois.length} станций (всего пока: ${allStations.length})`);
 
     if (pois.length < PAGE_SIZE) break; // это была последняя страница
+    await sleep(BETWEEN_PAGES_DELAY_MS);
   }
 
   return allStations;
