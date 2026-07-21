@@ -242,8 +242,43 @@ async function importManualStations() {
 
 async function main() {
   await ensureDefaultIntegrations();
+  await ensureDefaultNewsSources();
   await importOcmStations();
   await importManualStations();
+}
+
+async function ensureDefaultNewsSources() {
+  const defaults = [
+    {
+      name: 'Avtocharge.ru — новости EV',
+      feedUrl: 'https://avtocharge.ru/feed/',
+    },
+    {
+      name: 'За рулём — электромобили',
+      feedUrl: 'https://www.zr.ru/rss/tags/elektromobili-i-gibridy/',
+    },
+    {
+      name: 'Autonews.ru — электромобили',
+      feedUrl: 'https://www.autonews.ru/rss/',
+    },
+    {
+      name: 'РБК Авто',
+      feedUrl: 'https://auto.rbc.ru/rss/',
+    },
+  ];
+
+  for (const d of defaults) {
+    await prisma.newsSource.upsert({
+      where: { feedUrl: d.feedUrl },
+      update: {},
+      create: {
+        name: d.name,
+        feedUrl: d.feedUrl,
+        isEnabled: false, // включать вручную после проверки в /admin -> Новости -> Источники
+      },
+    });
+  }
+  console.log(`Источники новостей: заготовки созданы (${defaults.length} шт.) — включи нужные в /admin`);
 }
 
 main()

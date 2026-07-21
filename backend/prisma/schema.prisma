@@ -154,3 +154,34 @@ model Article {
   publishedAt DateTime?
   createdAt   DateTime @default(now())
 }
+
+// Источник RSS-новостей — управляется через /admin -> Новости -> Источники.
+// Список редактируется без передеплоя: включаешь isEnabled, и cron-задача
+// начнёт забирать заголовки + выжимки от туда.
+model NewsSource {
+  id            String     @id @default(uuid())
+  name          String     // отображаемое имя, напр. "За рулём"
+  feedUrl       String     @unique
+  isEnabled     Boolean    @default(false) // включается вручную после проверки
+  lastFetchedAt DateTime?
+  lastError     String?    // текст последней ошибки, видно в админке
+  createdAt     DateTime   @default(now())
+  items         NewsItem[]
+}
+
+// Новостной дайджест: заголовок + выжимка (1-2 предл.) + ссылка на оригинал.
+// Полный текст чужих статей НЕ копируется — только дайджест.
+model NewsItem {
+  id           String      @id @default(uuid())
+  title        String
+  excerpt      String?     // 1-2 предложения из оригинала
+  sourceUrl    String      @unique // ссылка на оригинальную статью — обязательна
+  sourceName   String      // "За рулём", "РБК" и т.д.
+  imageUrl     String?
+  publishedAt  DateTime?
+  fetchedAt    DateTime    @default(now())
+  sourceId     String?
+  source       NewsSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([publishedAt])
+}

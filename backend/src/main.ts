@@ -101,6 +101,25 @@ async function mountAdmin(app: any) {
         actions: { delete: { isAccessible: isAdmin } },
       }),
       buildResource('Article', { navigation: { name: 'Блог' } }),
+      buildResource('NewsSource', {
+        navigation: { name: 'Новости' },
+        listProperties: ['name', 'feedUrl', 'isEnabled', 'lastFetchedAt', 'lastError'],
+        editProperties: ['name', 'feedUrl', 'isEnabled'],
+        properties: {
+          lastError: { isVisible: { list: true, show: true, edit: false, filter: false } },
+          lastFetchedAt: { isVisible: { list: true, show: true, edit: false, filter: false } },
+        },
+      }),
+      buildResource('NewsItem', {
+        navigation: { name: 'Новости' },
+        listProperties: ['title', 'sourceName', 'publishedAt', 'fetchedAt'],
+        actions: {
+          new: { isAccessible: () => false }, // новости создаёт только парсер
+          edit: { isAccessible: () => false }, // и не редактируются вручную
+          delete: { isAccessible: isAdmin },
+          bulkDelete: { isAccessible: isAdmin },
+        },
+      }),
       buildResource('Integration', {
         navigation: { name: 'Интеграции' },
         listProperties: ['key', 'name', 'isEnabled', 'updatedAt'],
