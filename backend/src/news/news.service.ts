@@ -155,7 +155,7 @@ export class NewsService {
   // Публичный API для получения новостей (используется фронтендом)
   async getLatest(limit = 20, offset = 0) {
     return this.prisma.newsItem.findMany({
-      where: { status: 'approved' }, // только прошедшие модерацию
+      where: { status: 'approved' },
       orderBy: { publishedAt: 'desc' },
       take: limit,
       skip: offset,
@@ -163,20 +163,30 @@ export class NewsService {
         id: true,
         title: true,
         excerpt: true,
+        body: true,
         sourceUrl: true,
         sourceName: true,
+        isOriginal: true,
         imageUrl: true,
         publishedAt: true,
       },
     });
   }
 
-  // Для AdminJS — очередь на модерацию
-  async getPending(limit = 50) {
-    return this.prisma.newsItem.findMany({
-      where: { status: 'pending' },
-      orderBy: { fetchedAt: 'desc' },
-      take: limit,
+  async getOne(id: string) {
+    return this.prisma.newsItem.findFirst({
+      where: { id, status: 'approved' },
+      select: {
+        id: true,
+        title: true,
+        excerpt: true,
+        body: true,
+        sourceUrl: true,
+        sourceName: true,
+        isOriginal: true,
+        imageUrl: true,
+        publishedAt: true,
+      },
     });
   }
 }

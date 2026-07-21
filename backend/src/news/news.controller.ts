@@ -21,6 +21,12 @@ export class NewsController {
     );
   }
 
+  // GET /api/news/:id
+  @Get(':id')
+  getOne(@Param('id') id: string) {
+    return this.newsService.getOne(id);
+  }
+
   // POST /api/news/fetch/:sourceId
   // Ручной тригер — кнопка "Обновить сейчас" в AdminJS или Postman-проверка.
   // TODO: добавить auth-guard (только admin) когда появится авторизация.

@@ -112,16 +112,52 @@ async function mountAdmin(app: any) {
       }),
       buildResource('NewsItem', {
         navigation: { name: 'Новости' },
-        listProperties: ['title', 'sourceName', 'status', 'publishedAt', 'fetchedAt'],
-        filterProperties: ['status', 'sourceName'],
-        showProperties: ['title', 'excerpt', 'sourceUrl', 'sourceName', 'status', 'imageUrl', 'publishedAt', 'fetchedAt'],
+        listProperties: ['title', 'sourceName', 'isOriginal', 'status', 'publishedAt', 'fetchedAt'],
+        filterProperties: ['status', 'sourceName', 'isOriginal'],
+        showProperties: ['title', 'excerpt', 'body', 'sourceUrl', 'sourceName', 'isOriginal', 'status', 'imageUrl', 'publishedAt', 'fetchedAt'],
+        editProperties: ['title', 'excerpt', 'body', 'sourceUrl', 'sourceName', 'isOriginal', 'imageUrl', 'publishedAt', 'status'],
+        properties: {
+          // Поле body — rich-text через quill (тип richtext поддерживается AdminJS v7)
+          body: {
+            type: 'richtext',
+            isVisible: { list: false, show: true, edit: true, filter: false },
+            props: {
+              quill: {
+                theme: 'snow',
+                modules: {
+                  toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['blockquote', 'code-block'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    ['link', 'image'],
+                    ['clean'],
+                  ],
+                },
+              },
+            },
+          },
+          isOriginal: {
+            isVisible: { list: true, show: true, edit: true, filter: true },
+          },
+        },
         actions: {
-          // Создавать и редактировать новости вручную нельзя — только парсер
-          new: { isAccessible: () => false },
-          edit: { isAccessible: () => false },
+          // Создать можно — для оригинальных материалов редакции
+          new: {
+            isAccessible: isAdmin,
+            before: async (request: any) => {
+              if (request.payload) {
+                request.payload.isOriginal = true;
+                request.payload.sourceName = request.payload.sourceName || 'proev.ru';
+                request.payload.sourceUrl = request.payload.sourceUrl || `https://proev.ru/news/${Date.now()}`;
+              }
+              return request;
+            },
+          },
+          edit: { isAccessible: ({ currentAdmin }: any) => ['admin', 'moderator'].includes(currentAdmin?.role) },
           delete: { isAccessible: isAdmin },
           bulkDelete: { isAccessible: isAdmin },
-          // Кастомное действие «Одобрить»
+          // Одобрить
           approve: {
             actionType: 'record',
             label: '✓ Одобрить',
@@ -139,7 +175,7 @@ async function mountAdmin(app: any) {
               };
             },
           },
-          // Кастомное действие «Отклонить»
+          // Отклонить
           reject: {
             actionType: 'record',
             label: '✗ Отклонить',
@@ -157,7 +193,7 @@ async function mountAdmin(app: any) {
               };
             },
           },
-          // Массовое одобрение — удобно для большой очереди
+          // Массовое одобрение
           bulkApprove: {
             actionType: 'bulk',
             label: '✓ Одобрить выбранные',

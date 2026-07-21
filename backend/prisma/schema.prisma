@@ -177,12 +177,15 @@ model NewsSource {
 
 // Новостной дайджест: заголовок + выжимка (1-2 предл.) + ссылка на оригинал.
 // Полный текст чужих статей НЕ копируется — только дайджест.
+// Поле body — для редактирования/дополнения через визуальный редактор в /admin.
 model NewsItem {
   id           String      @id @default(uuid())
   title        String
-  excerpt      String?     // 1-2 предложения из оригинала
-  sourceUrl    String      @unique // ссылка на оригинальную статью — обязательна
+  excerpt      String?     // 1-2 предложения — превью на сайте
+  body         String?     // HTML-контент (редактируется визуально в /admin)
+  sourceUrl    String      @unique // ссылка на оригинальную статью
   sourceName   String      // "За рулём", "РБК" и т.д.
+  isOriginal   Boolean     @default(false) // true = написана вручную в /admin, false = спарсена
   imageUrl     String?
   publishedAt  DateTime?
   fetchedAt    DateTime    @default(now())
