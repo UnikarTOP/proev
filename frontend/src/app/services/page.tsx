@@ -4,6 +4,8 @@ export const metadata = {
   title: 'Сервисы для электромобилей — СТО, зарядки, страхование | proev.ru',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function ServicesPage() {
   let providers: ServiceProvider[] = [];
   try {

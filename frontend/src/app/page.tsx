@@ -1,6 +1,8 @@
 import { RouteStrip } from '@/components/RouteStrip';
 import { apiGet, type StationStats } from '@/lib/api';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   let stats: StationStats | null = null;
   try {
