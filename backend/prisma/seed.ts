@@ -77,6 +77,7 @@ async function ensureDefaultIntegrations() {
     { key: 'openchargemap', name: 'OpenChargeMap' },
     { key: 'yandex_maps', name: 'Яндекс.Карты' },
     { key: '2gis', name: '2GIS' },
+    { key: 'data_mos_ru', name: 'data.mos.ru — электрозаправки Москвы' },
     {
       key: 'map_provider',
       name: 'Провайдер карты (osm | yandex | 2gis)',
@@ -92,6 +93,155 @@ async function ensureDefaultIntegrations() {
       create: { key: d.key, name: d.name, isEnabled: false },
     });
   }
+}
+
+// ─── data.mos.ru ────────────────────────────────────────────────────────────
+//
+// Официальный реестр электрозаправок Москвы от Правительства Москвы.
+// Источник: https://data.mos.ru/opendata/7704786030-elektrozapravki
+//
+// Для работы нужен бесплатный API-ключ:
+// 1. Зарегистрироваться на https://apidata.mos.ru
+// 2. Получить ключ в профиле
+// 3. Вставить ключ в /admin -> API-ключи -> data.mos.ru и включить isEnabled
+//
+// Числовой ID датасета выясняем автоматически через поиск по SefUrl.
+
+const DATA_MOS_API = 'https://apidata.mos.ru/v1';
+const DATA_MOS_DATASET_SEFURL = '7704786030-elektrozapravki';
+
+interface MosFeature {
+  geometry?: { coordinates?: number[] };
+  properties?: {
+    Attributes?: {
+      Name?: string;
+      Address?: string;
+      Longitude_WGS84?: string | number;
+      Latitude_WGS84?: string | number;
+      ConnectorType?: string;
+      ChargingType?: string;
+      OperatorName?: string;
+      PowerKw?: string | number;
+      WorkingHours?: string;
+    };
+  };
+}
+
+async function importMosStations() {
+  const integration = await prisma.integration.findUnique({ where: { key: 'data_mos_ru' } });
+  if (!integration?.isEnabled || !integration.apiKey) {
+    console.log('data.mos.ru: интеграция не включена — пропускаю.');
+    console.log('  Чтобы включить: /admin -> API-ключи -> data.mos.ru -> вставь ключ -> isEnabled=true');
+    return;
+  }
+
+  const apiKey = integration.apiKey;
+  console.log('Импортирую зарядные станции из data.mos.ru...');
+
+  try {
+    // Шаг 1: находим числовой ID датасета по SefUrl
+    const searchRes = await fetch(
+      `${DATA_MOS_API}/datasets?$filter=SefUrl eq '${DATA_MOS_DATASET_SEFURL}'&api_key=${apiKey}`,
+      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) },
+    );
+
+    if (!searchRes.ok) {
+      throw new Error(`Поиск датасета: HTTP ${searchRes.status}`);
+    }
+
+    const datasets = await searchRes.json();
+    const dataset = Array.isArray(datasets) ? datasets[0] : datasets?.value?.[0];
+
+    if (!dataset?.Id) {
+      // Если поиск по SefUrl не сработал — пробуем по известному числовому ID
+      console.log('  Не нашли датасет через поиск, пробую по прямому ID...');
+      return await importMosStationsById(apiKey, 20562);  // числовой ID датасета электрозаправок
+    }
+
+    await importMosStationsById(apiKey, dataset.Id);
+  } catch (err) {
+    console.warn(`  data.mos.ru ошибка: ${(err as Error).message}`);
+    console.warn('  Пропускаю этот источник, продолжаю с остальными.');
+  }
+}
+
+async function importMosStationsById(apiKey: string, datasetId: number) {
+  let page = 0;
+  const pageSize = 100;
+  let total = 0;
+  let created = 0;
+
+  while (true) {
+    const url = `${DATA_MOS_API}/datasets/${datasetId}/features?$top=${pageSize}&$skip=${page * pageSize}&api_key=${apiKey}`;
+
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(20_000),
+    });
+
+    if (!res.ok) {
+      console.warn(`  data.mos.ru: страница ${page + 1} вернула ${res.status}, прерываю`);
+      break;
+    }
+
+    const geojson = await res.json();
+    const features: MosFeature[] = geojson?.features ?? geojson ?? [];
+
+    if (!features.length) break;
+
+    for (const f of features) {
+      const attrs = f.properties?.Attributes ?? f.properties ?? {};
+      const coords = f.geometry?.coordinates;
+
+      // data.mos.ru хранит координаты в геометрии [lng, lat] или в атрибутах
+      const lng = coords?.[0] ?? parseFloat(String(attrs.Longitude_WGS84 ?? ''));
+      const lat = coords?.[1] ?? parseFloat(String(attrs.Latitude_WGS84 ?? ''));
+
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) continue;
+
+      const name = attrs.Name || 'Электрозаправка (Москва)';
+      const address = attrs.Address;
+      const operator = attrs.OperatorName ?? 'Россети / Москва';
+      const powerKw = attrs.PowerKw ? parseFloat(String(attrs.PowerKw)) : undefined;
+
+      // Тип разъёма из поля ConnectorType
+      const rawConnector = String(attrs.ConnectorType ?? '');
+      const connectorTypes: string[] = [];
+      if (rawConnector.toLowerCase().includes('ccs') || rawConnector.toLowerCase().includes('combo')) connectorTypes.push('CCS2');
+      if (rawConnector.toLowerCase().includes('chademo')) connectorTypes.push('CHAdeMO');
+      if (rawConnector.toLowerCase().includes('type 2') || rawConnector.toLowerCase().includes('type2')) connectorTypes.push('Type2');
+      if (rawConnector.toLowerCase().includes('gb/t')) connectorTypes.push('GBT');
+
+      await prisma.chargingStation.upsert({
+        where: { id: `mos-${datasetId}-${total + features.indexOf(f)}` },
+        update: {},
+        create: {
+          id: `mos-${datasetId}-${total + features.indexOf(f)}`,
+          name,
+          networkOperator: operator,
+          latitude: lat,
+          longitude: lng,
+          address,
+          city: 'Москва',
+          connectorTypes,
+          chargingSpeed: speedFromKw(powerKw),
+          powerKw: powerKw ?? null,
+          status: 'unknown',
+          verified: true, // официальные данные мэрии — считаем проверенными
+        },
+      });
+      created++;
+    }
+
+    console.log(`  Страница ${page + 1}: сохранено ${features.length} записей (итого: ${created})`);
+    total += features.length;
+
+    if (features.length < pageSize) break;
+    page++;
+    await sleep(500);
+  }
+
+  console.log(`data.mos.ru: импортировано ${created} станций`);
 }
 
 async function fetchWithRetry(url: string, apiKey: string): Promise<OcmPoi[]> {
@@ -260,6 +410,7 @@ async function importManualStations() {
 async function main() {
   await ensureDefaultIntegrations();
   await ensureDefaultNewsSources();
+  await importMosStations();
   await importOcmStations();
   await importManualStations();
 }
