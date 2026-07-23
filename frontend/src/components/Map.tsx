@@ -82,6 +82,7 @@ export default function Map({ stations }: Props) {
       container: containerRef.current,
       style: {
         version: 8,
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         sources: {
           osm: {
             type: 'raster',
