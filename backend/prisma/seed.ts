@@ -77,6 +77,12 @@ async function ensureDefaultIntegrations() {
     { key: 'openchargemap', name: 'OpenChargeMap' },
     { key: 'yandex_maps', name: 'Яндекс.Карты' },
     { key: '2gis', name: '2GIS' },
+    {
+      key: 'map_provider',
+      name: 'Провайдер карты (osm | yandex | 2gis)',
+      // Значение apiKey используем как название провайдера — не секрет,
+      // просто настройка. Меняется в /admin -> Интеграции -> map_provider.
+    },
   ];
 
   for (const d of defaults) {

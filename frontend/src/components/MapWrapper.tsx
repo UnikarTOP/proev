@@ -4,20 +4,33 @@ import { useEffect, useState } from 'react';
 import type { ChargingStation } from '@/lib/api';
 import Map from './Map';
 
+interface MapConfig {
+  provider: 'osm' | 'yandex' | '2gis';
+  yandexApiKey: string | null;
+}
+
 export default function MapWrapper() {
-  const [stations, setStations] = useState<ChargingStation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [stations, setStations]   = useState<ChargingStation[]>([]);
+  const [config, setConfig]       = useState<MapConfig>({ provider: 'osm', yandexApiKey: null });
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(false);
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    fetch(`${apiUrl}/stations`)
-      .then((r) => {
-        if (!r.ok) throw new Error('API error');
-        return r.json();
+
+    Promise.all([
+      fetch(`${apiUrl}/stations`).then((r) => r.json()),
+      fetch(`${apiUrl}/map-config`).then((r) => r.json()),
+    ])
+      .then(([stationsData, configData]) => {
+        setStations(stationsData);
+        setConfig(configData);
+        setLoading(false);
       })
-      .then((data) => { setStations(data); setLoading(false); })
-      .catch(() => { setError(true); setLoading(false); });
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -41,5 +54,5 @@ export default function MapWrapper() {
     );
   }
 
-  return <Map stations={stations} />;
+  return <Map stations={stations} mapProvider={config.provider} yandexApiKey={config.yandexApiKey} />;
 }
