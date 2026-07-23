@@ -95,187 +95,115 @@ async function ensureDefaultIntegrations() {
   }
 }
 
-// ─── data.mos.ru ────────────────────────────────────────────────────────────
+// ─── OpenStreetMap Overpass API ─────────────────────────────────────────────
 //
-// Официальный реестр электрозаправок Москвы от Правительства Москвы.
-// Источник: https://data.mos.ru/opendata/7704786030-elektrozapravki
-//
-// Для работы нужен бесплатный API-ключ:
-// 1. Зарегистрироваться на https://apidata.mos.ru
-// 2. Получить ключ в профиле
-// 3. Вставить ключ в /admin -> API-ключи -> data.mos.ru и включить isEnabled
-//
-// Числовой ID датасета выясняем автоматически через поиск по SefUrl.
+// Публичный API без регистрации и ключей. Возвращает все зарядные станции
+// России с тегом amenity=charging_station из OpenStreetMap.
+// Данных обычно больше, чем в OpenChargeMap — сообщество OSM активно
+// добавляет российские станции.
 
-const DATA_MOS_API = 'https://apidata.mos.ru/v1';
-const DATA_MOS_DATASET_SEFURL = '7704786030-elektrozapravki';
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
-interface MosFeature {
-  geometry?: { coordinates?: number[] };
-  properties?: {
-    Attributes?: {
-      Name?: string;
-      Address?: string;
-      Longitude_WGS84?: string | number;
-      Latitude_WGS84?: string | number;
-      ConnectorType?: string;
-      ChargingType?: string;
-      OperatorName?: string;
-      PowerKw?: string | number;
-      WorkingHours?: string;
-    };
-  };
+interface OsmElement {
+  type: string;
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
 }
 
-async function importMosStations() {
-  // Ключ берём сначала из env (проще для деплоя), потом из БД (для тех кто вписал через админку)
-  const envKey = process.env.DATA_MOS_API_KEY;
-  const integration = await prisma.integration.findUnique({ where: { key: 'data_mos_ru' } });
-  const apiKey = envKey || (integration?.isEnabled ? integration.apiKey : null);
+function osmConnectors(tags: Record<string, string>): string[] {
+  const result: string[] = [];
+  const socket = (tags['socket:type2'] || tags['socket:type2_combo']) ? 'Type2' : null;
+  if (socket) result.push(socket);
+  if (tags['socket:ccs'] || tags['socket:type2_combo']) result.push('CCS2');
+  if (tags['socket:chademo']) result.push('CHAdeMO');
+  if (tags['socket:gbt_dc'] || tags['socket:gbt_ac']) result.push('GBT');
+  if (tags['socket:type1']) result.push('Type1');
+  // Убираем дубли
+  return Array.from(new Set(result));
+}
 
-  if (!apiKey) {
-    console.log('data.mos.ru: ключ не задан — пропускаю.');
-    console.log('  Добавь DATA_MOS_API_KEY=... в .env или вставь ключ в /admin -> API-ключи -> data.mos.ru');
-    return;
-  }
+function osmSpeed(tags: Record<string, string>): 'slow' | 'fast' | 'ultra_fast' {
+  const output = parseFloat(tags['maxpower'] || tags['capacity:electrical'] || '0');
+  if (output >= 50) return 'ultra_fast';
+  if (output >= 22) return 'fast';
+  // Если мощность не указана — смотрим на тип разъёма
+  if (tags['socket:chademo'] || tags['socket:ccs']) return 'fast';
+  return 'slow';
+}
 
-  console.log('Импортирую зарядные станции из data.mos.ru...');
+async function importOsmStations() {
+  console.log('Импортирую зарядные станции из OpenStreetMap (Overpass API)...');
+
+  // Запрос всех зарядных станций в России
+  const query = `
+[out:json][timeout:60];
+area["ISO3166-1"="RU"][admin_level=2]->.ru;
+(
+  node[amenity=charging_station](area.ru);
+  way[amenity=charging_station](area.ru);
+);
+out center tags;
+  `.trim();
 
   try {
-    // Пробуем несколько известных вариантов ID датасета электрозаправок.
-    // data.mos.ru периодически меняет ID при обновлениях датасета.
-    const candidateIds = [20562, 60571, 60572, 2257];
-
-    for (const id of candidateIds) {
-      // Сначала проверим, что датасет с таким ID существует
-      const checkRes = await fetch(
-        `${DATA_MOS_API}/datasets/${id}?api_key=${apiKey}`,
-        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) },
-      );
-
-      if (!checkRes.ok) {
-        console.log(`  ID ${id}: HTTP ${checkRes.status}, пробую следующий...`);
-        continue;
-      }
-
-      const meta = await checkRes.json();
-      const caption: string = meta?.Caption || meta?.caption || '';
-      console.log(`  ID ${id}: "${caption}"`);
-
-      // Проверяем что это нужный датасет (по названию)
-      if (caption.toLowerCase().includes('заправ') || caption.toLowerCase().includes('электро') || id === 20562) {
-        await importMosStationsById(apiKey, id);
-        return;
-      }
-    }
-
-    // Если ни один не подошёл — ищем через API поиска
-    console.log('  Поиск датасета через API...');
-    const searchRes = await fetch(
-      `${DATA_MOS_API}/datasets?api_key=${apiKey}&$top=100`,
-      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) },
-    );
-
-    if (searchRes.ok) {
-      const all = await searchRes.json();
-      const list = Array.isArray(all) ? all : all?.value ?? [];
-      const found = list.find((d: any) =>
-        (d.Caption || d.SefUrl || '').toLowerCase().includes('заправ') ||
-        (d.Caption || d.SefUrl || '').toLowerCase().includes('электро'),
-      );
-      if (found) {
-        console.log(`  Нашли через поиск: ID ${found.Id} — "${found.Caption}"`);
-        await importMosStationsById(apiKey, found.Id);
-        return;
-      }
-    }
-
-    console.warn('  Не удалось найти датасет электрозаправок в data.mos.ru');
-  } catch (err) {
-    console.warn(`  data.mos.ru ошибка: ${(err as Error).message}`);
-    console.warn('  Пропускаю этот источник, продолжаю с остальными.');
-  }
-}
-
-async function importMosStationsById(apiKey: string, datasetId: number) {
-  let page = 0;
-  const pageSize = 100;
-  let total = 0;
-  let created = 0;
-
-  while (true) {
-    const url = `${DATA_MOS_API}/datasets/${datasetId}/features?$top=${pageSize}&$skip=${page * pageSize}&api_key=${apiKey}`;
-
-    const res = await fetch(url, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(20_000),
+    const res = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `data=${encodeURIComponent(query)}`,
+      signal: AbortSignal.timeout(90_000), // Overpass может думать до минуты
     });
 
-    if (!res.ok) {
-      console.warn(`  data.mos.ru: страница ${page + 1} вернула ${res.status}, прерываю`);
-      break;
-    }
+    if (!res.ok) throw new Error(`Overpass API: HTTP ${res.status}`);
 
-    const geojson = await res.json();
-    const features: MosFeature[] = geojson?.features ?? geojson ?? [];
+    const data = await res.json();
+    const elements: OsmElement[] = data.elements ?? [];
+    console.log(`  Получено ${elements.length} объектов из OSM`);
 
-    if (!features.length) break;
+    let created = 0;
+    let skipped = 0;
 
-    for (const f of features) {
-      // data.mos.ru может вернуть атрибуты либо в properties.Attributes,
-      // либо напрямую в properties — берём любой вариант через any
-      const attrs: any = f.properties?.Attributes ?? f.properties ?? {};
-      const coords = f.geometry?.coordinates;
+    for (const el of elements) {
+      const lat = el.lat ?? el.center?.lat;
+      const lon = el.lon ?? el.center?.lon;
+      if (!lat || !lon) { skipped++; continue; }
 
-      // data.mos.ru хранит координаты в геометрии [lng, lat] или в атрибутах
-      const lng = coords?.[0] ?? parseFloat(String(attrs.Longitude_WGS84 ?? ''));
-      const lat = coords?.[1] ?? parseFloat(String(attrs.Latitude_WGS84 ?? ''));
-
-      if (!lat || !lng || isNaN(lat) || isNaN(lng)) continue;
-
-      const name = attrs.Name || 'Электрозаправка (Москва)';
-      const address = attrs.Address;
-      const operator = attrs.OperatorName ?? 'Россети / Москва';
-      const powerKw = attrs.PowerKw ? parseFloat(String(attrs.PowerKw)) : undefined;
-
-      // Тип разъёма из поля ConnectorType
-      const rawConnector = String(attrs.ConnectorType ?? '');
-      const connectorTypes: string[] = [];
-      if (rawConnector.toLowerCase().includes('ccs') || rawConnector.toLowerCase().includes('combo')) connectorTypes.push('CCS2');
-      if (rawConnector.toLowerCase().includes('chademo')) connectorTypes.push('CHAdeMO');
-      if (rawConnector.toLowerCase().includes('type 2') || rawConnector.toLowerCase().includes('type2')) connectorTypes.push('Type2');
-      if (rawConnector.toLowerCase().includes('gb/t')) connectorTypes.push('GBT');
+      const tags = el.tags ?? {};
+      const name = tags['name'] || tags['operator'] || 'Зарядная станция (OSM)';
+      const operator = tags['operator'] || tags['network'] || 'Неизвестный оператор';
+      const city = tags['addr:city'] || tags['addr:suburb'] || undefined;
+      const address = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(', ') || undefined;
+      const powerKw = parseFloat(tags['maxpower'] || '0') || undefined;
+      const connectorTypes = osmConnectors(tags);
 
       await prisma.chargingStation.upsert({
-        where: { id: `mos-${datasetId}-${total + features.indexOf(f)}` },
+        where: { id: `osm-${el.id}` },
         update: {},
         create: {
-          id: `mos-${datasetId}-${total + features.indexOf(f)}`,
+          id: `osm-${el.id}`,
           name,
           networkOperator: operator,
           latitude: lat,
-          longitude: lng,
+          longitude: lon,
           address,
-          city: 'Москва',
+          city,
           connectorTypes,
-          chargingSpeed: speedFromKw(powerKw),
+          chargingSpeed: osmSpeed(tags),
           powerKw: powerKw ?? null,
           status: 'unknown',
-          verified: true, // официальные данные мэрии — считаем проверенными
+          verified: false,
         },
       });
       created++;
     }
 
-    console.log(`  Страница ${page + 1}: сохранено ${features.length} записей (итого: ${created})`);
-    total += features.length;
-
-    if (features.length < pageSize) break;
-    page++;
-    await sleep(500);
+    console.log(`OSM: импортировано ${created}, пропущено (нет координат): ${skipped}`);
+  } catch (err) {
+    console.warn(`  Overpass API ошибка: ${(err as Error).message}`);
+    console.warn('  Пропускаю OSM, продолжаю с остальными источниками.');
   }
-
-  console.log(`data.mos.ru: импортировано ${created} станций`);
 }
 
 async function fetchWithRetry(url: string, apiKey: string): Promise<OcmPoi[]> {
@@ -444,9 +372,9 @@ async function importManualStations() {
 async function main() {
   await ensureDefaultIntegrations();
   await ensureDefaultNewsSources();
-  await importMosStations();
-  await importOcmStations();
-  await importManualStations();
+  await importOsmStations();   // OSM Overpass — бесплатно, без ключей, хорошее покрытие РФ
+  await importOcmStations();   // OpenChargeMap — дополнительные станции
+  await importManualStations(); // ручной список
 }
 
 async function ensureDefaultNewsSources() {
