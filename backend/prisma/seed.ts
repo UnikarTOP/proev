@@ -190,7 +190,9 @@ async function importMosStationsById(apiKey: string, datasetId: number) {
     if (!features.length) break;
 
     for (const f of features) {
-      const attrs = f.properties?.Attributes ?? f.properties ?? {};
+      // data.mos.ru может вернуть атрибуты либо в properties.Attributes,
+      // либо напрямую в properties — берём любой вариант через any
+      const attrs: any = f.properties?.Attributes ?? f.properties ?? {};
       const coords = f.geometry?.coordinates;
 
       // data.mos.ru хранит координаты в геометрии [lng, lat] или в атрибутах
