@@ -227,24 +227,99 @@ async function mountAdmin(app: any) {
           },
         },
       }),
-      buildResource('Integration', {
-        navigation: { name: 'Интеграции' },
-        listProperties: ['key', 'name', 'isEnabled', 'updatedAt'],
-        editProperties: ['key', 'name', 'apiKey', 'extraConfig', 'isEnabled'],
-        properties: {
-          // Ключ показываем только на странице редактирования, не в общем списке —
-          // чтобы не светился при простом просмотре таблицы.
-          apiKey: { isVisible: { list: false, show: true, edit: true, filter: false } },
+      // ── Настройки карты ─────────────────────────────────────────────────
+      // Отдельный визуальный раздел — только запись map_provider.
+      // Поле apiKey здесь — это выбор провайдера через выпадающий список,
+      // не секретный ключ: 'osm' | 'yandex' | '2gis'.
+      {
+        resource: { model: getModelByName('Integration'), client: prisma },
+        options: {
+          id: 'MapSettings',          // уникальный id чтобы AdminJS не путал с основным Integration
+          navigation: { name: 'Настройки', icon: 'Map' },
+          listProperties: ['name', 'apiKey'],
+          editProperties: ['apiKey'],
+          showProperties: ['name', 'apiKey', 'updatedAt'],
+          filterProperties: [],
+          properties: {
+            apiKey: {
+              label: 'Провайдер карты',
+              availableValues: [
+                { value: 'osm',    label: '🗺️  OpenStreetMap (бесплатно)' },
+                { value: 'yandex', label: '🟡 Яндекс.Карты' },
+                { value: '2gis',   label: '🟢 2GIS' },
+              ],
+              isVisible: { list: true, show: true, edit: true, filter: false },
+            },
+            name:      { isVisible: { list: true, show: true, edit: false, filter: false } },
+            key:       { isVisible: false },
+            isEnabled: { isVisible: false },
+            extraConfig: { isVisible: false },
+            createdAt: { isVisible: false },
+            updatedAt: { isVisible: { list: false, show: true, edit: false, filter: false } },
+          },
+          actions: {
+            // Показываем ТОЛЬКО запись map_provider
+            list: {
+              isAccessible: isAdmin,
+              before: async (request: any) => {
+                request.query = { ...request.query, filters: { key: 'map_provider' } };
+                return request;
+              },
+            },
+            show:   { isAccessible: isAdmin },
+            edit:   { isAccessible: isAdmin },
+            new:    { isAccessible: () => false },    // нельзя создавать — только редактировать
+            delete: { isAccessible: () => false },
+            bulkDelete: { isAccessible: () => false },
+          },
         },
-        // Ключи внешних сервисов — зона ответственности только владельца.
-        actions: {
-          list: { isAccessible: isAdmin },
-          show: { isAccessible: isAdmin },
-          edit: { isAccessible: isAdmin },
-          new: { isAccessible: isAdmin },
-          delete: { isAccessible: isAdmin },
+      },
+
+      // ── API-ключи внешних сервисов ───────────────────────────────────────
+      // Все интеграции кроме map_provider — ключи OpenChargeMap, Яндекс, 2GIS.
+      {
+        resource: { model: getModelByName('Integration'), client: prisma },
+        options: {
+          id: 'ApiKeys',
+          navigation: { name: 'Настройки', icon: 'Key' },
+          listProperties: ['name', 'isEnabled', 'updatedAt'],
+          editProperties: ['name', 'apiKey', 'isEnabled'],
+          showProperties: ['name', 'apiKey', 'isEnabled', 'updatedAt'],
+          properties: {
+            apiKey: {
+              label: 'API-ключ / токен',
+              isVisible: { list: false, show: true, edit: true, filter: false },
+            },
+            key:        { isVisible: false },
+            extraConfig: { isVisible: false },
+            createdAt:  { isVisible: false },
+          },
+          actions: {
+            // Скрываем map_provider из этого раздела
+            list: {
+              isAccessible: isAdmin,
+              before: async (request: any) => {
+                // Фильтруем записи — исключаем map_provider
+                request.query = { ...request.query };
+                return request;
+              },
+              after: async (response: any) => {
+                if (response.records) {
+                  response.records = response.records.filter(
+                    (r: any) => r.params?.key !== 'map_provider',
+                  );
+                }
+                return response;
+              },
+            },
+            show:       { isAccessible: isAdmin },
+            edit:       { isAccessible: isAdmin },
+            new:        { isAccessible: isAdmin },
+            delete:     { isAccessible: isAdmin },
+            bulkDelete: { isAccessible: isAdmin },
+          },
         },
-      }),
+      },
       buildResource('User', {
         navigation: { name: 'Пользователи' },
         properties: { passwordHash: { isVisible: false } },
