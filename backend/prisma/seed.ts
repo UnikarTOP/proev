@@ -128,37 +128,69 @@ interface MosFeature {
 }
 
 async function importMosStations() {
+  // Ключ берём сначала из env (проще для деплоя), потом из БД (для тех кто вписал через админку)
+  const envKey = process.env.DATA_MOS_API_KEY;
   const integration = await prisma.integration.findUnique({ where: { key: 'data_mos_ru' } });
-  if (!integration?.isEnabled || !integration.apiKey) {
-    console.log('data.mos.ru: интеграция не включена — пропускаю.');
-    console.log('  Чтобы включить: /admin -> API-ключи -> data.mos.ru -> вставь ключ -> isEnabled=true');
+  const apiKey = envKey || (integration?.isEnabled ? integration.apiKey : null);
+
+  if (!apiKey) {
+    console.log('data.mos.ru: ключ не задан — пропускаю.');
+    console.log('  Добавь DATA_MOS_API_KEY=... в .env или вставь ключ в /admin -> API-ключи -> data.mos.ru');
     return;
   }
 
-  const apiKey = integration.apiKey;
   console.log('Импортирую зарядные станции из data.mos.ru...');
 
   try {
-    // Шаг 1: находим числовой ID датасета по SefUrl
+    // Пробуем несколько известных вариантов ID датасета электрозаправок.
+    // data.mos.ru периодически меняет ID при обновлениях датасета.
+    const candidateIds = [20562, 60571, 60572, 2257];
+
+    for (const id of candidateIds) {
+      // Сначала проверим, что датасет с таким ID существует
+      const checkRes = await fetch(
+        `${DATA_MOS_API}/datasets/${id}?api_key=${apiKey}`,
+        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) },
+      );
+
+      if (!checkRes.ok) {
+        console.log(`  ID ${id}: HTTP ${checkRes.status}, пробую следующий...`);
+        continue;
+      }
+
+      const meta = await checkRes.json();
+      const caption: string = meta?.Caption || meta?.caption || '';
+      console.log(`  ID ${id}: "${caption}"`);
+
+      // Проверяем что это нужный датасет (по названию)
+      if (caption.toLowerCase().includes('заправ') || caption.toLowerCase().includes('электро') || id === 20562) {
+        await importMosStationsById(apiKey, id);
+        return;
+      }
+    }
+
+    // Если ни один не подошёл — ищем через API поиска
+    console.log('  Поиск датасета через API...');
     const searchRes = await fetch(
-      `${DATA_MOS_API}/datasets?$filter=SefUrl eq '${DATA_MOS_DATASET_SEFURL}'&api_key=${apiKey}`,
+      `${DATA_MOS_API}/datasets?api_key=${apiKey}&$top=100`,
       { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) },
     );
 
-    if (!searchRes.ok) {
-      throw new Error(`Поиск датасета: HTTP ${searchRes.status}`);
+    if (searchRes.ok) {
+      const all = await searchRes.json();
+      const list = Array.isArray(all) ? all : all?.value ?? [];
+      const found = list.find((d: any) =>
+        (d.Caption || d.SefUrl || '').toLowerCase().includes('заправ') ||
+        (d.Caption || d.SefUrl || '').toLowerCase().includes('электро'),
+      );
+      if (found) {
+        console.log(`  Нашли через поиск: ID ${found.Id} — "${found.Caption}"`);
+        await importMosStationsById(apiKey, found.Id);
+        return;
+      }
     }
 
-    const datasets = await searchRes.json();
-    const dataset = Array.isArray(datasets) ? datasets[0] : datasets?.value?.[0];
-
-    if (!dataset?.Id) {
-      // Если поиск по SefUrl не сработал — пробуем по известному числовому ID
-      console.log('  Не нашли датасет через поиск, пробую по прямому ID...');
-      return await importMosStationsById(apiKey, 20562);  // числовой ID датасета электрозаправок
-    }
-
-    await importMosStationsById(apiKey, dataset.Id);
+    console.warn('  Не удалось найти датасет электрозаправок в data.mos.ru');
   } catch (err) {
     console.warn(`  data.mos.ru ошибка: ${(err as Error).message}`);
     console.warn('  Пропускаю этот источник, продолжаю с остальными.');
