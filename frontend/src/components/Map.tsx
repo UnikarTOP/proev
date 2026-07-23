@@ -279,35 +279,122 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
         />
 
         {selected && (
-          <div className="w-72 shrink-0 bg-white border border-line rounded-xl p-4 flex flex-col gap-3">
-            <div className="flex justify-between items-start">
-              <h3 className="font-semibold text-ink-900 text-sm leading-snug pr-2">{selected.name}</h3>
-              <button onClick={() => setSelected(null)} className="text-muted hover:text-ink-900 text-lg leading-none">×</button>
-            </div>
+          <div style={{ width: 300, flexShrink: 0 }}>
+            <div style={{
+              background: 'var(--surface-2,#fff)',
+              border: '0.5px solid #DCE1E8',
+              borderRadius: 16,
+              overflow: 'hidden',
+              fontFamily: 'Golos Text, sans-serif',
+            }}>
 
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLOR[selected.status] }} />
-              <span className="text-sm font-medium" style={{ color: STATUS_COLOR[selected.status] }}>
-                {STATUS_LABEL[selected.status]}
-              </span>
-            </div>
+              {/* Заголовок */}
+              <div style={{ padding: '14px 14px 10px', borderBottom: '0.5px solid #DCE1E8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#10192B', lineHeight: 1.3 }}>{selected.name}</div>
+                    {(selected.city || selected.address) && (
+                      <div style={{ fontSize: 11, color: '#6B7686', marginTop: 3 }}>
+                        {[selected.city, selected.address].filter(Boolean).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setSelected(null)}
+                    style={{ background: 'none', border: 'none', color: '#B4B2A9', fontSize: 20, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}
+                  >×</button>
+                </div>
 
-            <div className="space-y-1.5 text-xs text-muted">
-              {selected.networkOperator && <div><span className="text-graphite-900">Оператор:</span> {selected.networkOperator}</div>}
-              {selected.city    && <div><span className="text-graphite-900">Город:</span> {selected.city}</div>}
-              {selected.address && <div><span className="text-graphite-900">Адрес:</span> {selected.address}</div>}
-              {selected.chargingSpeed && <div><span className="text-graphite-900">Скорость:</span> {SPEED_LABEL[selected.chargingSpeed]}</div>}
+                {/* Статус + время */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    background: selected.status === 'working' ? '#e6f7f0' : selected.status === 'broken' ? '#fdf0f0' : '#f5f5f4',
+                    borderRadius: 20, padding: '4px 10px',
+                  }}>
+                    <div style={{
+                      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                      background: STATUS_COLOR[selected.status],
+                    }} />
+                    <span style={{
+                      fontSize: 12, fontWeight: 500,
+                      color: selected.status === 'working' ? '#0F6E56' : selected.status === 'broken' ? '#A32D2D' : '#5F5E5A',
+                    }}>
+                      {STATUS_LABEL[selected.status]}
+                    </span>
+                  </div>
+                  {selected.networkOperator && (
+                    <span style={{ fontSize: 11, color: '#6B7686' }}>{selected.networkOperator}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Коннекторы */}
               {selected.connectorTypes.length > 0 && (
-                <div><span className="text-graphite-900">Разъёмы:</span> <span className="font-mono">{selected.connectorTypes.join(', ')}</span></div>
+                <div style={{ padding: '10px 14px', borderBottom: '0.5px solid #DCE1E8' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7686', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Коннекторы</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {selected.connectorTypes.map((c) => (
+                      <div key={c} style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        background: '#F5F7FA', border: '0.5px solid #DCE1E8',
+                        borderRadius: 10, padding: '7px 10px',
+                      }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 7,
+                          background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="2" strokeLinecap="round">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#10192B' }}>{c}</div>
+                          {selected.powerKw ? (
+                            <div style={{ fontSize: 10, color: '#6B7686' }}>до {selected.powerKw} кВт · {selected.chargingSpeed === 'slow' ? 'AC' : 'DC'}</div>
+                          ) : (
+                            <div style={{ fontSize: 10, color: '#6B7686' }}>{SPEED_LABEL[selected.chargingSpeed]}</div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[selected.status] }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-            </div>
 
-            <button
-              onClick={() => mapRef.current?.flyTo({ center: [selected.longitude, selected.latitude], zoom: 15 })}
-              className="text-xs text-center text-volt-600 border border-volt-600 rounded-lg py-1.5 hover:bg-volt-600/10 transition-colors"
-            >
-              Показать на карте
-            </button>
+              {/* Кнопки */}
+              <div style={{ padding: '10px 14px', display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => mapRef.current?.flyTo({ center: [selected.longitude, selected.latitude], zoom: 16 })}
+                  style={{
+                    flex: 1, background: '#0BA5CC', color: '#fff', border: 'none',
+                    borderRadius: 10, padding: '9px 8px', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <polygon points="3,11 22,2 13,21 11,13 3,11"/>
+                  </svg>
+                  На карте
+                </button>
+                <button
+                  style={{
+                    flex: 1, background: '#F5F7FA', color: '#10192B', border: '0.5px solid #DCE1E8',
+                    borderRadius: 10, padding: '9px 8px', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  Отзыв
+                </button>
+              </div>
+
+            </div>
           </div>
         )}
       </div>

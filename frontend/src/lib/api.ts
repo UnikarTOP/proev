@@ -26,6 +26,7 @@ export interface ChargingStation {
   city?: string;
   connectorTypes: string[];
   chargingSpeed: 'slow' | 'fast' | 'ultra_fast';
+  powerKw?: number;
   status: 'working' | 'broken' | 'unknown';
 }
 
