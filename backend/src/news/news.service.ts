@@ -83,8 +83,10 @@ export class NewsService {
   private async fetchRssFeed(feedUrl: string): Promise<ParsedItem[]> {
     const res = await fetch(feedUrl, {
       headers: {
-        'User-Agent': 'proev.ru-news-aggregator/1.0 (+https://proev.ru)',
-        Accept: 'application/rss+xml, application/xml, text/xml',
+        'User-Agent': 'Mozilla/5.0 (compatible; proev.ru-aggregator/1.0; +https://proev.ru)',
+        'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+        'Cache-Control': 'no-cache',
       },
       signal: AbortSignal.timeout(15_000),
     });

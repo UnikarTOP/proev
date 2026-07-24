@@ -388,7 +388,7 @@ async function ensureDefaultNewsSources() {
       feedUrl: 'https://www.gazeta.ru/export/rss/autonews.xml',
     },
     {
-      name: 'РИА Новости — все новости',
+      name: 'РИА Новости',
       feedUrl: 'https://ria.ru/export/rss2/archive/index.xml',
     },
     {
@@ -396,12 +396,12 @@ async function ensureDefaultNewsSources() {
       feedUrl: 'https://www.kommersant.ru/RSS/section-auto.xml',
     },
     {
-      name: 'ТАСС — авто',
+      name: 'ТАСС',
       feedUrl: 'https://tass.ru/rss/v2.xml',
     },
     {
-      name: 'Avtocharge.ru — EV-новости',
-      feedUrl: 'https://avtocharge.ru/novosti/feed/',
+      name: 'Motor.ru',
+      feedUrl: 'https://motor.ru/rss/',
     },
   ];
 
@@ -420,6 +420,7 @@ async function ensureDefaultNewsSources() {
   // Удаляем нерабочие ленты
   const deadFeeds = [
     'https://avtocharge.ru/feed/',
+    'https://avtocharge.ru/novosti/feed/',
     'https://www.zr.ru/rss/tags/elektromobili-i-gibridy/',
     'https://www.autonews.ru/rss/',
     'https://auto.rbc.ru/rss/',
