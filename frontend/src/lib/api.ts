@@ -38,9 +38,24 @@ export interface StationStats {
 export interface ServiceProvider {
   id: string;
   name: string;
+  slug: string;
+  tagline?: string;
   city?: string;
+  address?: string;
   description?: string;
   logoUrl?: string;
   phone?: string;
+  telegram?: string;
+  whatsapp?: string;
+  website?: string;
+  services: string[];
+  brands: string[];
+  photos: string[];
+  workingHours?: string;
+  yearFounded?: number;
+  isPaidPlacement: boolean;
+  verified: boolean;
+  ratingAvg?: number;
+  reviewCount: number;
   category: { name: string; slug: string };
 }

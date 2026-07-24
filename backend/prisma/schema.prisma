@@ -59,6 +59,8 @@ model User {
   reviews          StationReview[]
   leads            Lead[]
   articles         Article[]
+  providerReviews  ProviderReview[]
+  managedProviders ServiceProvider[]
 }
 
 model ChargingStation {
@@ -111,22 +113,62 @@ model ServiceCategory {
 }
 
 model ServiceProvider {
-  id             String   @id @default(uuid())
+  id             String          @id @default(uuid())
   name           String
+  slug           String          @unique // URL: /services/ev-service-moscow
   categoryId     String
   category       ServiceCategory @relation(fields: [categoryId], references: [id])
+
+  // Основная информация
+  tagline        String?         // короткий слоган под названием
+  description    String?         // подробное описание (до 1000 символов)
   city           String?
+  address        String?         // полный адрес
   latitude       Float?
   longitude      Float?
-  description    String?
-  logoUrl        String?
-  phone          String?
-  website        String?
-  isPaidPlacement Boolean @default(false)
-  ratingAvg      Float?
 
-  leads     Lead[]
-  createdAt DateTime @default(now())
+  // Контакты (партнёр заполняет сам)
+  phone          String?
+  telegram       String?         // @username или ссылка
+  whatsapp       String?
+  website        String?
+  email          String?
+
+  // Контент лендинга
+  logoUrl        String?
+  photos         String[]        // до 6 фото, загружает партнёр
+  services       String[]        // список услуг: ['Диагностика батареи', 'ТО', ...]
+  brands         String[]        // марки EV: ['Tesla', 'BYD', 'Zeekr', ...]
+  workingHours   String?         // 'Пн–Вс 9:00–21:00'
+  yearFounded    Int?            // год основания
+
+  // Модерация и монетизация
+  isPaidPlacement Boolean        @default(false)
+  verified        Boolean        @default(false) // проверен командой proev.ru
+  isPublished     Boolean        @default(false) // партнёр опубликовал страницу
+  ratingAvg       Float?
+  reviewCount     Int            @default(0)
+
+  // Владелец (партнёр с ролью partner)
+  ownerId        String?
+  owner          User?           @relation(fields: [ownerId], references: [id])
+
+  leads          Lead[]
+  reviews        ProviderReview[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+// Отзывы на партнёра — от пользователей proev.ru после заявки
+model ProviderReview {
+  id         String          @id @default(uuid())
+  providerId String
+  provider   ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  authorId   String?
+  author     User?           @relation(fields: [authorId], references: [id])
+  rating     Int             // 1..5
+  text       String?
+  createdAt  DateTime        @default(now())
 }
 
 model Lead {
