@@ -19,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="hidden md:flex gap-8 text-sm font-medium text-ink-700">
               <a href="/charge-map" className="hover:text-volt-600">Карта зарядок</a>
               <a href="/services" className="hover:text-volt-600">Сервисы</a>
+              <a href="/news" className="hover:text-volt-600">Новости</a>
               <a href="/blog" className="hover:text-volt-600">Блог</a>
             </div>
             <a href="/services" className="bg-ink-900 text-white text-sm font-semibold px-4 py-2.5 rounded-[10px] whitespace-nowrap">
