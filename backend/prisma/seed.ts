@@ -388,20 +388,20 @@ async function ensureDefaultNewsSources() {
       feedUrl: 'https://www.gazeta.ru/export/rss/autonews.xml',
     },
     {
-      name: 'РИА Новости',
-      feedUrl: 'https://ria.ru/export/rss2/archive/index.xml',
+      name: 'РИА Новости — авто',
+      feedUrl: 'https://ria.ru/export/rss2/auto/index.xml',   // специализированный авто-раздел
     },
     {
-      name: 'Коммерсант — авто',
-      feedUrl: 'https://www.kommersant.ru/RSS/section-auto.xml',
+      name: 'Auto.Mail.ru',
+      feedUrl: 'https://auto.mail.ru/rss/',
     },
     {
-      name: 'ТАСС',
-      feedUrl: 'https://tass.ru/rss/v2.xml',
+      name: 'ТАСС — авто',
+      feedUrl: 'https://tass.ru/avtomobili/rss',
     },
     {
-      name: 'Motor.ru',
-      feedUrl: 'https://motor.ru/rss/',
+      name: 'Известия — авто',
+      feedUrl: 'https://iz.ru/xml/rss/auto.xml',
     },
   ];
 
@@ -417,7 +417,7 @@ async function ensureDefaultNewsSources() {
     });
   }
 
-  // Удаляем нерабочие ленты
+  // Удаляем нерабочие и нерелевантные ленты
   const deadFeeds = [
     'https://avtocharge.ru/feed/',
     'https://avtocharge.ru/novosti/feed/',
@@ -428,6 +428,11 @@ async function ensureDefaultNewsSources() {
     'https://www.zr.ru/rss/all/',
     'https://www.autonews.ru/rss/news.xml',
     'https://ria.ru/export/rss2/auto/index.xml',
+    'https://www.kommersant.ru/RSS/section-auto.xml',
+    'https://motor.ru/rss/',
+    'https://www.drive.ru/rss/all.rss',
+    'https://ria.ru/export/rss2/archive/index.xml', // общая лента — слишком много нерелевантного
+    'https://tass.ru/rss/v2.xml',                   // общая лента — то же
   ];
   for (const url of deadFeeds) {
     await prisma.newsSource.deleteMany({ where: { feedUrl: url } }).catch(() => {});

@@ -14,6 +14,26 @@ interface ParsedItem {
   enclosureUrl?: string;
 }
 
+// Ключевые слова для фильтрации — новости без них не сохраняются.
+// Регистронезависимо, проверяется в заголовке + описании.
+const EV_KEYWORDS = [
+  'электромобил', 'электрокар', 'электроавтомобил',
+  'зарядн', 'зарядка', 'зарядить',
+  'electric vehicle', 'ev ', ' ev,', ' ev.',
+  'tesla', 'byd', 'zeekr', 'nio', 'xpeng', 'li auto',
+  'атом', 'evolute', 'москвич 3е', 'амберавто', 'eonyx',
+  'ocpp', 'ocpi', 'кВт·ч', 'квтч', 'kwh',
+  'аккумулятор', 'батарея', 'литий',
+  'гибрид', 'phev', 'plug-in',
+  'инфраструктур зарядк', 'зарядная станц', 'зарядная инфраструктур',
+  'россети', 'sitronics', '2chargers', 'ev-time',
+];
+
+function isEvRelated(title: string, description?: string): boolean {
+  const text = `${title} ${description ?? ''}`.toLowerCase();
+  return EV_KEYWORDS.some((kw) => text.includes(kw.toLowerCase()));
+}
+
 @Injectable()
 export class NewsService {
   private readonly logger = new Logger(NewsService.name);
@@ -44,6 +64,9 @@ export class NewsService {
 
       for (const item of items) {
         if (!item.link || !item.title) continue;
+
+        // Фильтруем нерелевантные новости — сохраняем только про EV/зарядки
+        if (!isEvRelated(item.title, item.description)) continue;
 
         const excerpt = this.makeExcerpt(item.description);
 
