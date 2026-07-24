@@ -10,15 +10,14 @@ interface NewsItem {
   sourceName: string;
   imageUrl?: string;
   publishedAt?: string;
-  body?: string;
 }
 
 const CATEGORIES = [
-  { label: 'Все', keywords: [] },
-  { label: 'Зарядки', keywords: ['зарядк', 'зарядн', 'charging', 'станц'] },
-  { label: 'Рынок', keywords: ['продаж', 'рынок', 'цен', 'импорт', 'бестселлер'] },
-  { label: 'Технологии', keywords: ['аккумулятор', 'батарея', 'технолог', 'дальност', 'запас хода'] },
-  { label: 'Законодательство', keywords: ['льгот', 'налог', 'закон', 'минтранс', 'правительств', 'субсид'] },
+  { label: 'Все', keywords: [] as string[] },
+  { label: 'Зарядки', keywords: ['зарядк', 'зарядн', 'станц'] },
+  { label: 'Рынок', keywords: ['продаж', 'рынок', 'цен', 'импорт'] },
+  { label: 'Технологии', keywords: ['аккумулятор', 'батарея', 'технолог', 'дальност'] },
+  { label: 'Законодательство', keywords: ['льгот', 'налог', 'закон', 'правительств'] },
 ];
 
 function timeAgo(dateStr?: string): string {
@@ -36,49 +35,48 @@ function matchesCategory(item: NewsItem, keywords: string[]): boolean {
   return keywords.some((kw) => text.includes(kw));
 }
 
-// Тема для fallback-картинки на Unsplash по ключевым словам
-function getUnsplashQuery(title: string): string {
+function getPlaceholder(title: string): { bg: string; color: string; icon: string } {
   const t = title.toLowerCase();
-  if (t.includes('зарядк') || t.includes('станц')) return 'electric+car+charging';
-  if (t.includes('tesla')) return 'tesla+electric+car';
-  if (t.includes('byd') || t.includes('zeekr') || t.includes('китай')) return 'chinese+electric+car';
-  if (t.includes('трасс') || t.includes('дорог')) return 'highway+road+russia';
-  if (t.includes('батарея') || t.includes('аккумул')) return 'battery+technology';
-  return 'electric+vehicle+russia';
+  if (t.includes('зарядк') || t.includes('станц') || t.includes('розетк'))
+    return { bg: '#E6F1FB', color: '#185FA5', icon: 'ti-plug' };
+  if (t.includes('продаж') || t.includes('рынок') || t.includes('цен'))
+    return { bg: '#FAEEDA', color: '#854F0B', icon: 'ti-report-money' };
+  if (t.includes('закон') || t.includes('налог') || t.includes('правительств'))
+    return { bg: '#EAF3DE', color: '#3B6D11', icon: 'ti-file-description' };
+  if (t.includes('батарея') || t.includes('аккумул') || t.includes('технолог'))
+    return { bg: '#E1F5EE', color: '#0F6E56', icon: 'ti-battery-charging' };
+  if (t.includes('трасс') || t.includes('дорог') || t.includes('маршрут'))
+    return { bg: '#EEEDFE', color: '#534AB7', icon: 'ti-map-pin' };
+  return { bg: '#F1EFE8', color: '#5F5E5A', icon: 'ti-bolt' };
 }
 
-function NewsImage({ imageUrl, title }: { imageUrl?: string; title: string }) {
-  const fallback = `https://source.unsplash.com/featured/640x360/?${getUnsplashQuery(title)}`;
-  const src = imageUrl || fallback;
+function NewsCardImage({ imageUrl, title }: { imageUrl?: string; title: string }) {
+  const ph = getPlaceholder(title);
+  const [failed, setFailed] = useState(false);
+
+  if (imageUrl && !failed) {
+    return (
+      <div className="h-40 overflow-hidden bg-paper-50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="h-40 bg-paper-50 overflow-hidden relative">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt=""
-        aria-hidden="true"
-        className="w-full h-full object-cover"
-        onError={(e) => {
-          // Если картинка не загрузилась — показываем иконку
-          const target = e.currentTarget;
-          target.style.display = 'none';
-          const parent = target.parentElement;
-          if (parent) {
-            parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><i class="ti ti-bolt text-4xl" style="color:#DCE1E8" aria-hidden="true"></i></div>`;
-          }
-        }}
-      />
+    <div
+      className="h-40 flex items-center justify-center"
+      style={{ background: ph.bg }}
+    >
+      <i className={`ti ${ph.icon} text-5xl`} style={{ color: ph.color, opacity: 0.4 }} aria-hidden="true" />
     </div>
   );
-}
-  const t = title.toLowerCase();
-  if (t.includes('зарядк') || t.includes('станц') || t.includes('розетк')) return 'ti-plug';
-  if (t.includes('продаж') || t.includes('рынок') || t.includes('цен')) return 'ti-report-money';
-  if (t.includes('закон') || t.includes('льгот') || t.includes('налог')) return 'ti-file-description';
-  if (t.includes('батарея') || t.includes('аккумул')) return 'ti-battery-charging';
-  if (t.includes('трасс') || t.includes('дорог') || t.includes('маршрут')) return 'ti-map-pin';
-  return 'ti-bolt';
 }
 
 export default function NewsPageClient() {
@@ -147,7 +145,7 @@ export default function NewsPageClient() {
                 rel="noopener noreferrer"
                 className="group block bg-white border border-line rounded-xl overflow-hidden hover:border-graphite-900/30 transition-colors"
               >
-                <NewsImage imageUrl={item.imageUrl} title={item.title} />
+                <NewsCardImage imageUrl={item.imageUrl} title={item.title} />
                 <div className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-[11px] font-semibold text-volt-600 bg-volt-600/10 px-2 py-0.5 rounded-full">
@@ -179,32 +177,38 @@ export default function NewsPageClient() {
         <>
           <p className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-3">Ещё новости</p>
           <div className="border border-line rounded-xl overflow-hidden bg-white">
-            {rest.map((item, idx) => (
-              <a
-                key={item.id}
-                href={item.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex gap-3 p-3.5 hover:bg-paper-50 transition-colors ${idx < rest.length - 1 ? 'border-b border-line' : ''}`}
-              >
-                <div className="w-10 h-10 rounded-lg bg-paper-50 flex items-center justify-center shrink-0">
-                  <i className={`ti ${getIcon(item.title)} text-xl text-muted`} aria-hidden="true" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[11px] font-semibold text-volt-600 bg-volt-600/10 px-1.5 py-0.5 rounded-full">
-                      {item.sourceName}
-                    </span>
-                    <span className="text-[11px] text-muted">{timeAgo(item.publishedAt)}</span>
+            {rest.map((item, idx) => {
+              const ph = getPlaceholder(item.title);
+              return (
+                <a
+                  key={item.id}
+                  href={item.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex gap-3 p-3.5 hover:bg-paper-50 transition-colors ${idx < rest.length - 1 ? 'border-b border-line' : ''}`}
+                >
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: ph.bg }}
+                  >
+                    <i className={`ti ${ph.icon} text-xl`} style={{ color: ph.color, opacity: 0.6 }} aria-hidden="true" />
                   </div>
-                  <p className="text-sm font-medium text-ink-900 leading-snug line-clamp-2">{item.title}</p>
-                  {item.excerpt && (
-                    <p className="text-xs text-muted line-clamp-1 mt-0.5">{item.excerpt}</p>
-                  )}
-                </div>
-                <i className="ti ti-chevron-right text-muted text-base shrink-0 my-auto" aria-hidden="true" />
-              </a>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[11px] font-semibold text-volt-600 bg-volt-600/10 px-1.5 py-0.5 rounded-full">
+                        {item.sourceName}
+                      </span>
+                      <span className="text-[11px] text-muted">{timeAgo(item.publishedAt)}</span>
+                    </div>
+                    <p className="text-sm font-medium text-ink-900 leading-snug line-clamp-2">{item.title}</p>
+                    {item.excerpt && (
+                      <p className="text-xs text-muted line-clamp-1 mt-0.5">{item.excerpt}</p>
+                    )}
+                  </div>
+                  <i className="ti ti-chevron-right text-muted text-base shrink-0 my-auto" aria-hidden="true" />
+                </a>
+              );
+            })}
           </div>
         </>
       )}

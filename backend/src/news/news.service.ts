@@ -72,7 +72,8 @@ export class NewsService {
 
         await this.prisma.newsItem.upsert({
           where: { sourceUrl: item.link },
-          update: {},   // не обновляем уже сохранённые — idempotent
+          // При повторном парсинге обновляем картинку если раньше не было
+          update: item.enclosureUrl ? { imageUrl: item.enclosureUrl } : {},
           create: {
             title: item.title.trim(),
             excerpt,
