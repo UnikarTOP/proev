@@ -388,8 +388,8 @@ async function ensureDefaultNewsSources() {
       feedUrl: 'https://www.gazeta.ru/export/rss/autonews.xml',
     },
     {
-      name: 'РИА Новости — авто',
-      feedUrl: 'https://ria.ru/export/rss2/auto/index.xml',
+      name: 'РИА Новости — все новости',
+      feedUrl: 'https://ria.ru/export/rss2/archive/index.xml',
     },
     {
       name: 'Коммерсант — авто',
@@ -426,6 +426,7 @@ async function ensureDefaultNewsSources() {
     'https://zr.ru/rss/all/',
     'https://www.zr.ru/rss/all/',
     'https://www.autonews.ru/rss/news.xml',
+    'https://ria.ru/export/rss2/auto/index.xml',
   ];
   for (const url of deadFeeds) {
     await prisma.newsSource.deleteMany({ where: { feedUrl: url } }).catch(() => {});
