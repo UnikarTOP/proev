@@ -380,35 +380,47 @@ async function main() {
 async function ensureDefaultNewsSources() {
   const defaults = [
     {
-      name: 'Avtocharge.ru — новости EV',
-      feedUrl: 'https://avtocharge.ru/feed/',
-    },
-    {
       name: 'За рулём — электромобили',
-      feedUrl: 'https://www.zr.ru/rss/tags/elektromobili-i-gibridy/',
+      feedUrl: 'https://www.zr.ru/rss/all/',  // общая лента, фильтруем по ключевым словам на клиенте
     },
     {
-      name: 'Autonews.ru — электромобили',
-      feedUrl: 'https://www.autonews.ru/rss/',
+      name: 'Autonews.ru — авто',
+      feedUrl: 'https://www.autonews.ru/rss/news.xml',
     },
     {
-      name: 'РБК Авто',
-      feedUrl: 'https://auto.rbc.ru/rss/',
+      name: 'Газета.ру — авто',
+      feedUrl: 'https://www.gazeta.ru/export/rss/autonews.xml',
+    },
+    {
+      name: 'Avtocharge.ru — EV-новости',
+      feedUrl: 'https://avtocharge.ru/novosti/feed/',
     },
   ];
 
   for (const d of defaults) {
     await prisma.newsSource.upsert({
       where: { feedUrl: d.feedUrl },
-      update: {},
+      update: { name: d.name }, // не трогаем isEnabled — пользователь управляет сам
       create: {
         name: d.name,
         feedUrl: d.feedUrl,
-        isEnabled: false, // включать вручную после проверки в /admin -> Новости -> Источники
+        isEnabled: false,
       },
     });
   }
-  console.log(`Источники новостей: заготовки созданы (${defaults.length} шт.) — включи нужные в /admin`);
+
+  // Удаляем старые нерабочие ленты (404) чтобы не засоряли AdminJS
+  const deadFeeds = [
+    'https://avtocharge.ru/feed/',
+    'https://www.zr.ru/rss/tags/elektromobili-i-gibridy/',
+    'https://www.autonews.ru/rss/',
+    'https://auto.rbc.ru/rss/',
+  ];
+  for (const url of deadFeeds) {
+    await prisma.newsSource.deleteMany({ where: { feedUrl: url } }).catch(() => {});
+  }
+
+  console.log(`Источники новостей: заготовки обновлены (${defaults.length} шт.) — включи нужные в /admin`);
 }
 
 main()
