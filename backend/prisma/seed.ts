@@ -384,16 +384,20 @@ async function main() {
 async function ensureDefaultNewsSources() {
   const defaults = [
     {
-      name: 'За рулём — электромобили',
-      feedUrl: 'https://www.zr.ru/rss/all/',  // общая лента, фильтруем по ключевым словам на клиенте
-    },
-    {
-      name: 'Autonews.ru — авто',
-      feedUrl: 'https://www.autonews.ru/rss/news.xml',
-    },
-    {
       name: 'Газета.ру — авто',
       feedUrl: 'https://www.gazeta.ru/export/rss/autonews.xml',
+    },
+    {
+      name: 'РИА Новости — авто',
+      feedUrl: 'https://ria.ru/export/rss2/auto/index.xml',
+    },
+    {
+      name: 'Коммерсант — авто',
+      feedUrl: 'https://www.kommersant.ru/RSS/section-auto.xml',
+    },
+    {
+      name: 'ТАСС — авто',
+      feedUrl: 'https://tass.ru/rss/v2.xml',
     },
     {
       name: 'Avtocharge.ru — EV-новости',
@@ -404,7 +408,7 @@ async function ensureDefaultNewsSources() {
   for (const d of defaults) {
     await prisma.newsSource.upsert({
       where: { feedUrl: d.feedUrl },
-      update: { name: d.name }, // не трогаем isEnabled — пользователь управляет сам
+      update: { name: d.name },
       create: {
         name: d.name,
         feedUrl: d.feedUrl,
@@ -413,18 +417,22 @@ async function ensureDefaultNewsSources() {
     });
   }
 
-  // Удаляем старые нерабочие ленты (404) чтобы не засоряли AdminJS
+  // Удаляем нерабочие ленты
   const deadFeeds = [
     'https://avtocharge.ru/feed/',
     'https://www.zr.ru/rss/tags/elektromobili-i-gibridy/',
     'https://www.autonews.ru/rss/',
     'https://auto.rbc.ru/rss/',
+    'https://zr.ru/rss/all/',
+    'https://www.zr.ru/rss/all/',
+    'https://www.autonews.ru/rss/news.xml',
   ];
   for (const url of deadFeeds) {
     await prisma.newsSource.deleteMany({ where: { feedUrl: url } }).catch(() => {});
   }
 
-  console.log(`Источники новостей: заготовки обновлены (${defaults.length} шт.) — включи нужные в /admin`);
+  console.log(`Источники новостей: обновлено (${defaults.length} шт.) — включи нужные в /admin`);
+}
 }
 
 main()
