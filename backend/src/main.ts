@@ -157,12 +157,12 @@ async function mountAdmin(app: any) {
           edit: { isAccessible: ({ currentAdmin }: any) => ['admin', 'moderator'].includes(currentAdmin?.role) },
           delete: { isAccessible: isAdmin },
           bulkDelete: { isAccessible: isAdmin },
-          // Одобрить
+          // Одобрить — кнопка на карточке записи
           approve: {
             actionType: 'record',
             label: '✓ Одобрить',
             icon: 'Check',
-            isVisible: (ctx: any) => ctx.record?.params?.status === 'pending',
+            isVisible: (ctx: any) => ctx.record?.params?.status === 'pending' || ctx.record?.params?.status === 'rejected',
             handler: async (request: any, response: any, context: any) => {
               const { record, currentAdmin } = context;
               await prisma.newsItem.update({
@@ -172,15 +172,16 @@ async function mountAdmin(app: any) {
               return {
                 record: record.toJSON(currentAdmin),
                 notice: { message: 'Новость одобрена и опубликована', type: 'success' },
+                redirectUrl: `/admin/resources/NewsItem`,
               };
             },
           },
-          // Отклонить
+          // Отклонить — кнопка на карточке записи
           reject: {
             actionType: 'record',
             label: '✗ Отклонить',
             icon: 'X',
-            isVisible: (ctx: any) => ctx.record?.params?.status === 'pending',
+            isVisible: (ctx: any) => ctx.record?.params?.status === 'pending' || ctx.record?.params?.status === 'approved',
             handler: async (request: any, response: any, context: any) => {
               const { record, currentAdmin } = context;
               await prisma.newsItem.update({
@@ -190,38 +191,7 @@ async function mountAdmin(app: any) {
               return {
                 record: record.toJSON(currentAdmin),
                 notice: { message: 'Новость отклонена', type: 'info' },
-              };
-            },
-          },
-          // Массовое одобрение
-          bulkApprove: {
-            actionType: 'bulk',
-            label: '✓ Одобрить выбранные',
-            handler: async (request: any, response: any, context: any) => {
-              const { records, currentAdmin } = context;
-              await prisma.newsItem.updateMany({
-                where: { id: { in: records.map((r: any) => r.params.id) } },
-                data: { status: 'approved' },
-              });
-              return {
-                records: records.map((r: any) => r.toJSON(currentAdmin)),
-                notice: { message: `Одобрено ${records.length} новостей`, type: 'success' },
-              };
-            },
-          },
-          // Массовое отклонение
-          bulkReject: {
-            actionType: 'bulk',
-            label: '✗ Отклонить выбранные',
-            handler: async (request: any, response: any, context: any) => {
-              const { records, currentAdmin } = context;
-              await prisma.newsItem.updateMany({
-                where: { id: { in: records.map((r: any) => r.params.id) } },
-                data: { status: 'rejected' },
-              });
-              return {
-                records: records.map((r: any) => r.toJSON(currentAdmin)),
-                notice: { message: `Отклонено ${records.length} новостей`, type: 'info' },
+                redirectUrl: `/admin/resources/NewsItem`,
               };
             },
           },
