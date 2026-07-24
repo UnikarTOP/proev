@@ -376,9 +376,10 @@ async function importManualStations() {
 async function main() {
   await ensureDefaultIntegrations();
   await ensureDefaultNewsSources();
-  await importOsmStations();   // OSM Overpass — бесплатно, без ключей, хорошее покрытие РФ
-  await importOcmStations();   // OpenChargeMap — дополнительные станции
-  await importManualStations(); // ручной список
+  await seedServiceCategories();
+  await importOsmStations();
+  await importOcmStations();
+  await importManualStations();
 }
 
 async function ensureDefaultNewsSources() {
@@ -450,3 +451,58 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+// ─── Категории сервисов и список EV-моделей ──────────────────────────────────
+
+const SERVICE_CATEGORIES = [
+  { name: 'СТО для электромобилей', slug: 'sto' },
+  { name: 'Зарядные станции для дома', slug: 'zaryadki-dom' },
+  { name: 'Установка зарядных станций', slug: 'ustanovka' },
+  { name: 'Страхование EV', slug: 'strahovanie' },
+  { name: 'Выкуп электромобилей', slug: 'vykup' },
+  { name: 'Обучение вождению EV', slug: 'obuchenie' },
+  { name: 'Аренда и каршеринг', slug: 'arenda' },
+  { name: 'Тюнинг и аксессуары', slug: 'tyuning' },
+];
+
+// Актуальные EV-модели на российском рынке 2024–2026
+export const EV_MODELS = [
+  // Китайские
+  'BYD Atto 3', 'BYD Han', 'BYD Song Plus EV', 'BYD Seal', 'BYD Dolphin',
+  'Zeekr 001', 'Zeekr 007', 'Zeekr X', 'Zeekr Mix',
+  'NIO ET5', 'NIO ET7', 'NIO EL6', 'NIO EL7',
+  'Xpeng P7', 'Xpeng G6', 'Xpeng G9',
+  'Li Auto L6', 'Li Auto L7', 'Li Auto L8', 'Li Auto L9',
+  'Avatr 11', 'Avatr 12',
+  'Dongfeng Mengshi M-Hero 917',
+  'Lixiang L6', 'Lixiang L7', 'Lixiang L8', 'Lixiang L9',
+  'Voyah Free', 'Voyah Dream',
+  'AITO M5', 'AITO M7', 'AITO M9',
+  'Chery Omoda E5',
+  'Geely Galaxy E8',
+  'Xiaomi SU7', 'Xiaomi SU7 Ultra',
+  'IM L6', 'IM LS6',
+  // Российские
+  'Москвич 3е', 'Москвич 6е',
+  'Evolute i-Pro', 'Evolute i-Joy', 'Evolute i-Van',
+  'АМБЕРАВТО A5',
+  'EONYX E1',
+  'АТОМ',
+  // Tesla
+  'Tesla Model 3', 'Tesla Model Y', 'Tesla Model S', 'Tesla Model X', 'Tesla Cybertruck',
+  // Прочие
+  'Porsche Taycan', 'Audi e-tron GT', 'BMW iX', 'BMW i4', 'Mercedes EQS',
+  'Hyundai IONIQ 5', 'Hyundai IONIQ 6', 'Kia EV6', 'Kia EV9',
+  'Volkswagen ID.4', 'Volkswagen ID.7',
+];
+
+async function seedServiceCategories() {
+  for (const cat of SERVICE_CATEGORIES) {
+    await prisma.serviceCategory.upsert({
+      where: { slug: cat.slug },
+      update: { name: cat.name },
+      create: cat,
+    });
+  }
+  console.log(`Категории сервисов: ${SERVICE_CATEGORIES.length} шт. готовы`);
+}

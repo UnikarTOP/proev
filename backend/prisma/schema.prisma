@@ -61,6 +61,7 @@ model User {
   articles         Article[]
   providerReviews  ProviderReview[]
   managedProviders ServiceProvider[]
+  partnerApplications PartnerApplication[]
 }
 
 model ChargingStation {
@@ -206,6 +207,30 @@ enum NewsStatus {
 // Источник RSS-новостей — управляется через /admin -> Новости -> Источники.
 // Список редактируется без передеплоя: включаешь isEnabled, и cron-задача
 // начнёт забирать заголовки + выжимки от туда.
+enum PartnerApplicationStatus {
+  pending   // ждёт рассмотрения
+  approved  // одобрена — партнёр получает доступ в кабинет
+  rejected  // отклонена
+}
+
+model PartnerApplication {
+  id          String                   @id @default(uuid())
+  companyName String
+  categoryId  String?
+  city        String
+  phone       String
+  email       String
+  description String?                  // кратко о бизнесе
+  website     String?
+  status      PartnerApplicationStatus @default(pending)
+  rejectionReason String?              // причина отказа (видна заявителю)
+  adminNote   String?                  // внутренняя заметка для модератора
+  userId      String?                  // созданный пользователь после одобрения
+  user        User?                    @relation(fields: [userId], references: [id])
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+}
+
 model NewsSource {
   id            String     @id @default(uuid())
   name          String     // отображаемое имя, напр. "За рулём"

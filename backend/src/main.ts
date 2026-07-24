@@ -88,13 +88,121 @@ async function mountAdmin(app: any) {
       }),
       buildResource('ServiceProvider', {
         navigation: { name: 'Сервисы' },
+        listProperties: ['name', 'city', 'isPublished', 'verified', 'isPaidPlacement'],
+        editProperties: ['name', 'slug', 'tagline', 'description', 'city', 'address',
+          'phone', 'telegram', 'website', 'logoUrl', 'services', 'brands',
+          'workingHours', 'yearFounded', 'isPaidPlacement', 'verified', 'isPublished'],
         properties: {
-          isPaidPlacement: {
-            isVisible: { list: true, show: true, filter: true, edit: false },
-          },
+          isPaidPlacement: { isVisible: { list: true, show: true, filter: true, edit: true } },
         },
         actions: { delete: { isAccessible: isAdmin } },
       }),
+      // ── Заявки на партнёрство ──────────────────────────────────────────────
+      {
+        resource: { model: getModelByName('PartnerApplication'), client: prisma },
+        options: {
+          navigation: { name: 'Партнёры' },
+          listProperties: ['companyName', 'city', 'email', 'phone', 'status', 'createdAt'],
+          showProperties: ['companyName', 'city', 'email', 'phone', 'categoryId',
+            'description', 'website', 'status', 'rejectionReason', 'adminNote', 'createdAt'],
+          editProperties: ['status', 'adminNote', 'rejectionReason'],
+          filterProperties: ['status'],
+          actions: {
+            new: { isAccessible: () => false },
+            delete: { isAccessible: isAdmin },
+            // ── Одобрить заявку ───────────────────────────────────────────
+            approve: {
+              actionType: 'record',
+              label: '✓ Одобрить',
+              icon: 'Check',
+              isVisible: (ctx: any) => ctx.record?.params?.status === 'pending',
+              handler: async (request: any, response: any, context: any) => {
+                const { record, currentAdmin } = context;
+                const appId = record.params.id;
+                const app = await prisma.partnerApplication.findUnique({ where: { id: appId } });
+                if (!app) return { record: record.toJSON(currentAdmin), notice: { message: 'Заявка не найдена', type: 'error' } };
+
+                // Создаём пользователя с ролью partner
+                const tempPassword = Math.random().toString(36).slice(2, 10);
+                const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+                const user = await prisma.user.create({
+                  data: {
+                    email: app.email,
+                    name: app.companyName,
+                    role: 'partner',
+                    passwordHash,
+                    phone: app.phone,
+                  },
+                });
+
+                // Создаём базовый профиль провайдера
+                const slug = app.companyName
+                  .toLowerCase()
+                  .replace(/[^a-zа-яё0-9\s]/gi, '')
+                  .replace(/\s+/g, '-')
+                  .replace(/[а-яё]/gi, (c) => ({
+                    а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'y',
+                    к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',
+                    х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
+                  }[c.toLowerCase()] || c))
+                  + '-' + Date.now().toString(36);
+
+                // Находим первую категорию если не указана
+                const categoryId = app.categoryId || (
+                  await prisma.serviceCategory.findFirst()
+                )?.id;
+
+                await prisma.serviceProvider.create({
+                  data: {
+                    name: app.companyName,
+                    slug,
+                    city: app.city,
+                    phone: app.phone,
+                    website: app.website,
+                    description: app.description,
+                    categoryId: categoryId!,
+                    ownerId: user.id,
+                    isPublished: false,
+                  },
+                });
+
+                // Обновляем заявку
+                await prisma.partnerApplication.update({
+                  where: { id: appId },
+                  data: { status: 'approved', userId: user.id },
+                });
+
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: `Одобрено! Пользователь создан: ${app.email} / ${tempPassword} (показывается только сейчас — скопируйте!)`,
+                    type: 'success',
+                  },
+                };
+              },
+            },
+            // ── Отклонить заявку ─────────────────────────────────────────
+            reject: {
+              actionType: 'record',
+              label: '✗ Отклонить',
+              icon: 'X',
+              isVisible: (ctx: any) => ctx.record?.params?.status === 'pending',
+              handler: async (request: any, response: any, context: any) => {
+                const { record, currentAdmin } = context;
+                await prisma.partnerApplication.update({
+                  where: { id: record.params.id },
+                  data: { status: 'rejected' },
+                });
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: { message: 'Заявка отклонена', type: 'info' },
+                };
+              },
+            },
+          },
+        },
+      },
       buildResource('Lead', {
         navigation: { name: 'Лиды' },
         listProperties: ['name', 'phone', 'status', 'providerId', 'createdAt'],
