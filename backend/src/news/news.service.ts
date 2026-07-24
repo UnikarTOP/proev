@@ -125,22 +125,47 @@ export class NewsService {
   private parseRssXml(xml: string): ParsedItem[] {
     const items: ParsedItem[] = [];
 
-    // Убираем CDATA и namespace-префиксы для простоты парсинга
-    const clean = xml
-      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, (_, content) => content)
-      .replace(/<[a-z]+:/g, '<')
-      .replace(/<\/[a-z]+:/g, '</');
+    // Убираем CDATA для простоты парсинга, но сохраняем namespace-префиксы
+    // (они нужны для media:content, media:thumbnail и og:image)
+    const clean = xml.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, (_, c) => c);
 
-    const itemMatches = clean.matchAll(/<item>([\s\S]*?)<\/item>/g);
+    // Пробуем найти items и в Atom-формате (entry) и RSS (item)
+    const itemPattern = /<(?:item|entry)>([\s\S]*?)<\/(?:item|entry)>/g;
+    const itemMatches = clean.matchAll(itemPattern);
 
     for (const match of itemMatches) {
       const block = match[1];
+      // Нормализуем namespace-префиксы для удобного поиска
+      const b = block
+        .replace(/<([a-z]+):([a-zA-Z]+)/g, '<$1_$2')
+        .replace(/<\/([a-z]+):([a-zA-Z]+)/g, '</$1_$2');
 
-      const title = this.extractTag(block, 'title');
-      const link = this.extractTag(block, 'link') || this.extractAttr(block, 'guid', 'isPermaLink');
-      const description = this.extractTag(block, 'description') || this.extractTag(block, 'summary');
-      const pubDate = this.extractTag(block, 'pubDate') || this.extractTag(block, 'published') || this.extractTag(block, 'updated');
-      const enclosureUrl = this.extractAttr(block, 'enclosure', 'url') || this.extractAttrTag(block, 'content', 'url');
+      const title = this.extractTag(b, 'title');
+      const link =
+        this.extractTag(b, 'link') ||
+        this.extractAttr(b, 'link', 'href') ||
+        this.extractAttr(b, 'guid', 'isPermaLink');
+      const description =
+        this.extractTag(b, 'description') ||
+        this.extractTag(b, 'summary') ||
+        this.extractTag(b, 'content_encoded') ||
+        this.extractTag(b, 'content');
+      const pubDate =
+        this.extractTag(b, 'pubDate') ||
+        this.extractTag(b, 'published') ||
+        this.extractTag(b, 'updated');
+
+      // Картинка — пробуем все возможные источники по убыванию приоритета:
+      // 1. enclosure (стандарт RSS)
+      // 2. media:content / media:thumbnail (Media RSS)
+      // 3. og:image в description
+      // 4. первый <img> тег в description
+      const enclosureUrl =
+        this.extractAttr(b, 'enclosure', 'url') ||
+        this.extractAttr(b, 'media_content', 'url') ||
+        this.extractAttr(b, 'media_thumbnail', 'url') ||
+        this.extractAttr(b, 'media_group', 'url') ||
+        (description ? this.extractImgFromHtml(description) : undefined);
 
       if (title && link) {
         items.push({ title, link, description, pubDate, enclosureUrl });
@@ -148,6 +173,26 @@ export class NewsService {
     }
 
     return items;
+  }
+
+  // Вытаскиваем первую картинку из HTML-описания
+  private extractImgFromHtml(html: string): string | undefined {
+    // og:image в метатегах (иногда попадает в description)
+    const ogMatch = html.match(/property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                    html.match(/content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    if (ogMatch) return ogMatch[1];
+
+    // Первый img src — только реальные изображения, не иконки/пиксели
+    const imgMatch = html.match(/<img[^>]+src=["']([^"']+\.(jpg|jpeg|png|webp)[^"']*)["']/i);
+    if (imgMatch) {
+      const src = imgMatch[1];
+      // Пропускаем маленькие счётчики и трекеры
+      if (!src.includes('pixel') && !src.includes('track') && !src.includes('counter') &&
+          !src.includes('1x1') && !src.includes('spacer')) {
+        return src;
+      }
+    }
+    return undefined;
   }
 
   private extractTag(xml: string, tag: string): string | undefined {

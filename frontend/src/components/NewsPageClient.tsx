@@ -36,8 +36,42 @@ function matchesCategory(item: NewsItem, keywords: string[]): boolean {
   return keywords.some((kw) => text.includes(kw));
 }
 
-// Иконка по ключевым словам заголовка
-function getIcon(title: string): string {
+// Тема для fallback-картинки на Unsplash по ключевым словам
+function getUnsplashQuery(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes('зарядк') || t.includes('станц')) return 'electric+car+charging';
+  if (t.includes('tesla')) return 'tesla+electric+car';
+  if (t.includes('byd') || t.includes('zeekr') || t.includes('китай')) return 'chinese+electric+car';
+  if (t.includes('трасс') || t.includes('дорог')) return 'highway+road+russia';
+  if (t.includes('батарея') || t.includes('аккумул')) return 'battery+technology';
+  return 'electric+vehicle+russia';
+}
+
+function NewsImage({ imageUrl, title }: { imageUrl?: string; title: string }) {
+  const fallback = `https://source.unsplash.com/featured/640x360/?${getUnsplashQuery(title)}`;
+  const src = imageUrl || fallback;
+
+  return (
+    <div className="h-40 bg-paper-50 overflow-hidden relative">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          // Если картинка не загрузилась — показываем иконку
+          const target = e.currentTarget;
+          target.style.display = 'none';
+          const parent = target.parentElement;
+          if (parent) {
+            parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><i class="ti ti-bolt text-4xl" style="color:#DCE1E8" aria-hidden="true"></i></div>`;
+          }
+        }}
+      />
+    </div>
+  );
+}
   const t = title.toLowerCase();
   if (t.includes('зарядк') || t.includes('станц') || t.includes('розетк')) return 'ti-plug';
   if (t.includes('продаж') || t.includes('рынок') || t.includes('цен')) return 'ti-report-money';
@@ -113,10 +147,7 @@ export default function NewsPageClient() {
                 rel="noopener noreferrer"
                 className="group block bg-white border border-line rounded-xl overflow-hidden hover:border-graphite-900/30 transition-colors"
               >
-                {/* Заглушка картинки */}
-                <div className="h-32 bg-paper-50 flex items-center justify-center">
-                  <i className={`ti ${getIcon(item.title)} text-4xl text-line`} aria-hidden="true" />
-                </div>
+                <NewsImage imageUrl={item.imageUrl} title={item.title} />
                 <div className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-[11px] font-semibold text-volt-600 bg-volt-600/10 px-2 py-0.5 rounded-full">
