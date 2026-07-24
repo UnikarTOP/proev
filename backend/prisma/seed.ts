@@ -441,16 +441,6 @@ async function ensureDefaultNewsSources() {
 
   console.log(`Источники новостей: обновлено (${defaults.length} шт.) — включи нужные в /admin`);
 }
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
 
 // ─── Категории сервисов и список EV-моделей ──────────────────────────────────
 
@@ -465,9 +455,7 @@ const SERVICE_CATEGORIES = [
   { name: 'Тюнинг и аксессуары', slug: 'tyuning' },
 ];
 
-// Актуальные EV-модели на российском рынке 2024–2026
 export const EV_MODELS = [
-  // Китайские
   'BYD Atto 3', 'BYD Han', 'BYD Song Plus EV', 'BYD Seal', 'BYD Dolphin',
   'Zeekr 001', 'Zeekr 007', 'Zeekr X', 'Zeekr Mix',
   'NIO ET5', 'NIO ET7', 'NIO EL6', 'NIO EL7',
@@ -478,19 +466,13 @@ export const EV_MODELS = [
   'Lixiang L6', 'Lixiang L7', 'Lixiang L8', 'Lixiang L9',
   'Voyah Free', 'Voyah Dream',
   'AITO M5', 'AITO M7', 'AITO M9',
-  'Chery Omoda E5',
-  'Geely Galaxy E8',
+  'Chery Omoda E5', 'Geely Galaxy E8',
   'Xiaomi SU7', 'Xiaomi SU7 Ultra',
   'IM L6', 'IM LS6',
-  // Российские
   'Москвич 3е', 'Москвич 6е',
   'Evolute i-Pro', 'Evolute i-Joy', 'Evolute i-Van',
-  'АМБЕРАВТО A5',
-  'EONYX E1',
-  'АТОМ',
-  // Tesla
+  'АМБЕРАВТО A5', 'EONYX E1', 'АТОМ',
   'Tesla Model 3', 'Tesla Model Y', 'Tesla Model S', 'Tesla Model X', 'Tesla Cybertruck',
-  // Прочие
   'Porsche Taycan', 'Audi e-tron GT', 'BMW iX', 'BMW i4', 'Mercedes EQS',
   'Hyundai IONIQ 5', 'Hyundai IONIQ 6', 'Kia EV6', 'Kia EV9',
   'Volkswagen ID.4', 'Volkswagen ID.7',
@@ -506,3 +488,12 @@ async function seedServiceCategories() {
   }
   console.log(`Категории сервисов: ${SERVICE_CATEGORIES.length} шт. готовы`);
 }
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
