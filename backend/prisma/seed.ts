@@ -151,9 +151,13 @@ out center tags;
   try {
     const res = await fetch(OVERPASS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': '*/*',
+        'User-Agent': 'proev.ru/1.0 (+https://proev.ru)',
+      },
       body: `data=${encodeURIComponent(query)}`,
-      signal: AbortSignal.timeout(90_000), // Overpass может думать до минуты
+      signal: AbortSignal.timeout(90_000),
     });
 
     if (!res.ok) throw new Error(`Overpass API: HTTP ${res.status}`);
