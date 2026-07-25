@@ -9,7 +9,8 @@ interface Provider {
   website?: string; email?: string; logoUrl?: string;
   photos: string[]; services: string[]; brands: string[];
   workingHours?: string; yearFounded?: number;
-  isPublished: boolean; ratingAvg?: number; reviewCount: number;
+  isPublished: boolean; isPaidPlacement: boolean;
+  ratingAvg?: number; reviewCount: number;
   category: { name: string; slug: string };
 }
 
