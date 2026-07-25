@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 
-const TiptapEditor = lazy(() => import('./TiptapEditor'));
+const TiptapEditor = dynamic(() => import('./TiptapEditor'), { ssr: false, loading: () => (
+  <div className="h-64 border border-line rounded-xl bg-paper-50 flex items-center justify-center text-muted text-sm">
+    Загружаем редактор...
+  </div>
+) });
 
 interface Post {
   id: string;
@@ -161,14 +166,12 @@ export default function PartnerBlog({ token }: { token: string }) {
         {/* Редактор */}
         <div>
           <label className="text-xs font-semibold text-muted uppercase tracking-wide block mb-1.5">Текст статьи</label>
-          <Suspense fallback={<div className="h-64 border border-line rounded-xl bg-paper-50 flex items-center justify-center text-muted text-sm">Загружаем редактор...</div>}>
-            <TiptapEditor
+          <TiptapEditor
               content={form.content}
               onChange={html => setForm(f => ({...f, content: html}))}
               token={token}
               placeholder="Расскажите о вашем опыте, поделитесь советами по обслуживанию электромобилей..."
             />
-          </Suspense>
         </div>
 
         {/* Публикация и кнопки */}
