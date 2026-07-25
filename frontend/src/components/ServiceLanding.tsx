@@ -48,13 +48,144 @@ function Stars({ value, size = 'sm' }: { value: number; size?: 'sm' | 'lg' }) {
   );
 }
 
+// ── Модальное окно с текстом согласия 152-ФЗ ─────────────────────────────────
+
+function ConsentModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ background: 'rgba(11,18,32,0.7)', backdropFilter: 'blur(2px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+        {/* Заголовок */}
+        <div className="flex items-center justify-between p-5 border-b border-line shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-ink-900">Согласие на обработку персональных данных</h2>
+            <p className="text-xs text-muted mt-0.5">В соответствии с Федеральным законом № 152-ФЗ</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:bg-paper-50 hover:text-ink-900 transition-colors"
+          >
+            <i className="ti ti-x text-base" aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Текст — скроллится */}
+        <div className="overflow-y-auto p-5 text-sm text-muted leading-relaxed space-y-3 flex-1">
+          <p>
+            Настоящим, в соответствии с требованиями Федерального закона от 27.07.2006 № 152-ФЗ
+            «О персональных данных», я даю своё согласие на обработку моих персональных данных.
+          </p>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">1. Оператор персональных данных</p>
+            <p>
+              Обработчиком персональных данных является партнёр сервиса proev.ru, разместивший
+              форму на своей странице, а также ООО / ИП, эксплуатирующее платформу proev.ru.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">2. Перечень персональных данных</p>
+            <p>Я даю согласие на обработку следующих персональных данных:</p>
+            <ul className="list-disc list-inside mt-1 space-y-0.5">
+              <li>Фамилия, имя, отчество</li>
+              <li>Номер телефона</li>
+              <li>Содержание обращения (при наличии)</li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">3. Цели обработки</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              <li>Рассмотрение и обработка поданной заявки</li>
+              <li>Обратная связь со мной по указанным контактным данным</li>
+              <li>Уточнение деталей обращения</li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">4. Действия с персональными данными</p>
+            <p>
+              Сбор, запись, систематизация, накопление, хранение, уточнение (обновление, изменение),
+              извлечение, использование, передача (предоставление) партнёру-оператору, блокирование,
+              удаление, уничтожение персональных данных.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">5. Передача третьим лицам</p>
+            <p>
+              Персональные данные передаются партнёру proev.ru, к которому направлена заявка, исключительно
+              в целях обработки обращения. Передача данных иным третьим лицам без вашего согласия
+              не осуществляется.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">6. Срок хранения</p>
+            <p>
+              Персональные данные хранятся в течение 3 (трёх) лет с момента подачи заявки,
+              либо до момента отзыва согласия субъектом персональных данных.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">7. Отзыв согласия</p>
+            <p>
+              Вы вправе отозвать настоящее согласие в любой момент, направив письменное заявление
+              по адресу электронной почты <span className="text-volt-600">privacy@proev.ru</span>.
+              Отзыв согласия не влияет на законность обработки, осуществлённой до его получения.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-ink-900 mb-1">8. Права субъекта персональных данных</p>
+            <p>
+              В соответствии с Федеральным законом № 152-ФЗ вы вправе:
+            </p>
+            <ul className="list-disc list-inside mt-1 space-y-0.5">
+              <li>Получать сведения об обработке своих персональных данных</li>
+              <li>Требовать уточнения, блокирования или уничтожения данных</li>
+              <li>Обжаловать действия оператора в Роскомнадзор</li>
+            </ul>
+          </div>
+
+          <p className="text-xs text-muted border-t border-line pt-3">
+            Нажимая кнопку «Отправить заявку», вы подтверждаете, что ознакомились с настоящим
+            согласием и принимаете его условия в полном объёме.
+          </p>
+        </div>
+
+        {/* Кнопка закрытия */}
+        <div className="p-4 border-t border-line shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 bg-ink-900 text-white rounded-xl text-sm font-semibold hover:bg-ink-700 transition-colors"
+          >
+            Понятно
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Форма заявки ─────────────────────────────────────────────────────────────
+
 function LeadForm({ provider }: { provider: Provider }) {
   const [form, setForm] = useState({ name: '', phone: '', service: '', message: '' });
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
     if (!form.name || !form.phone) return;
+    if (!consent) { setConsentError(true); return; }
     setLoading(true);
     try {
       const api = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -70,7 +201,6 @@ function LeadForm({ provider }: { provider: Provider }) {
       });
       setSent(true);
     } catch {
-      // показываем успех в любом случае (UX)
       setSent(true);
     }
     setLoading(false);
@@ -89,53 +219,90 @@ function LeadForm({ provider }: { provider: Provider }) {
   );
 
   return (
-    <div className="bg-ink-900 rounded-xl p-6">
-      <h3 className="text-white font-semibold mb-1">Оставить заявку</h3>
-      <p className="text-sm mb-4" style={{ color: '#6B7686' }}>Ответим в течение 24 часов</p>
+    <>
+      {showConsent && <ConsentModal onClose={() => setShowConsent(false)} />}
 
-      <div className="space-y-2">
-        <input
-          value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-          placeholder="Ваше имя"
-          className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1"
-          style={{ background: '#16233A', border: '0.5px solid #22304A', color: '#fff' }}
-        />
-        <input
-          value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-          placeholder="+7 (___) ___-__-__"
-          className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1"
-          style={{ background: '#16233A', border: '0.5px solid #22304A', color: '#fff' }}
-        />
-        {provider.services.length > 0 && (
-          <select
-            value={form.service} onChange={e => setForm(f => ({ ...f, service: e.target.value }))}
-            className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none"
-            style={{ background: '#16233A', border: '0.5px solid #22304A', color: form.service ? '#fff' : '#6B7686' }}
+      <div className="bg-ink-900 rounded-xl p-6">
+        <h3 className="text-white font-semibold mb-1">Оставить заявку</h3>
+        <p className="text-sm mb-4" style={{ color: '#6B7686' }}>Ответим в течение 24 часов</p>
+
+        <div className="space-y-2">
+          <input
+            value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="Ваше имя"
+            className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1"
+            style={{ background: '#16233A', border: '0.5px solid #22304A', color: '#fff' }}
+          />
+          <input
+            value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+            placeholder="+7 (___) ___-__-__"
+            className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1"
+            style={{ background: '#16233A', border: '0.5px solid #22304A', color: '#fff' }}
+          />
+          {provider.services.length > 0 && (
+            <select
+              value={form.service} onChange={e => setForm(f => ({ ...f, service: e.target.value }))}
+              className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none"
+              style={{ background: '#16233A', border: '0.5px solid #22304A', color: form.service ? '#fff' : '#6B7686' }}
+            >
+              <option value="">Какая услуга нужна?</option>
+              {provider.services.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
+          <textarea
+            value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+            placeholder="Опишите проблему (необязательно)"
+            rows={2}
+            className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none resize-none"
+            style={{ background: '#16233A', border: '0.5px solid #22304A', color: '#fff' }}
+          />
+
+          {/* Чекбокс согласия 152-ФЗ */}
+          <label
+            className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl transition-colors ${
+              consentError ? 'bg-red-500/10' : 'bg-white/5 hover:bg-white/10'
+            }`}
+            onClick={() => { setConsent(v => !v); setConsentError(false); }}
           >
-            <option value="">Какая услуга нужна?</option>
-            {provider.services.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
-        <textarea
-          value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-          placeholder="Опишите проблему (необязательно)"
-          rows={2}
-          className="w-full text-sm rounded-lg px-3 py-2.5 focus:outline-none resize-none"
-          style={{ background: '#16233A', border: '0.5px solid #22304A', color: '#fff' }}
-        />
-        <button
-          onClick={submit}
-          disabled={loading || !form.name || !form.phone}
-          className="w-full py-3 rounded-xl font-semibold text-sm transition-opacity disabled:opacity-50"
-          style={{ background: '#3DDBFF', color: '#0B1220' }}
-        >
-          {loading ? 'Отправляем...' : 'Отправить заявку →'}
-        </button>
-        <p className="text-[11px] text-center" style={{ color: '#6B7686' }}>
-          Без предоплаты · Данные не передаются третьим лицам
-        </p>
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+              consent ? 'border-volt-400 bg-volt-400' : consentError ? 'border-red-400' : 'border-white/30'
+            }`}>
+              {consent && <i className="ti ti-check text-ink-900 text-xs" aria-hidden="true" />}
+            </div>
+            <span className="text-xs leading-relaxed" style={{ color: consentError ? '#F09595' : '#9BA8BB' }}>
+              Я согласен(а) на обработку персональных данных в соответствии с{' '}
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setShowConsent(true); }}
+                className="underline underline-offset-2 hover:opacity-80 transition-opacity"
+                style={{ color: '#3DDBFF' }}
+              >
+                Федеральным законом № 152-ФЗ
+              </button>
+            </span>
+          </label>
+          {consentError && (
+            <p className="text-xs flex items-center gap-1.5" style={{ color: '#F09595' }}>
+              <i className="ti ti-alert-circle text-sm" aria-hidden="true" />
+              Необходимо дать согласие на обработку данных
+            </p>
+          )}
+
+          <button
+            onClick={submit}
+            disabled={loading || !form.name || !form.phone}
+            className="w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40"
+            style={{ background: consent ? '#3DDBFF' : '#3DDBFF80', color: '#0B1220' }}
+          >
+            {loading ? 'Отправляем...' : 'Отправить заявку →'}
+          </button>
+
+          <p className="text-[11px] text-center" style={{ color: '#6B7686' }}>
+            Без предоплаты · Данные передаются только {provider.name}
+          </p>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
