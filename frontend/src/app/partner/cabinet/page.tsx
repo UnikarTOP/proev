@@ -13,634 +13,460 @@ interface Provider {
   category: { name: string; slug: string };
 }
 
+interface Lead {
+  id: string; name: string; phone: string; message?: string;
+  status: string; createdAt: string;
+}
+
 interface Review {
   id: string; rating: number; text?: string; createdAt: string;
   author?: { name?: string };
 }
 
-interface Lead {
-  id: string; name: string; phone: string; message?: string; createdAt: string; status: string;
+interface Me {
+  id: string; name: string; email: string;
+  provider: Provider | null;
 }
 
-interface Me { id: string; name: string; email: string; provider: Provider | null; }
+type Section = 'overview' | 'page' | 'leads' | 'reviews' | 'settings';
 
-type Section = 'overview' | 'page' | 'leads' | 'photos' | 'services' | 'contacts' | 'reviews';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-const EV_MODELS_SHORT = [
-  'Tesla Model 3','Tesla Model Y','Tesla Model S','Tesla Model X',
-  'BYD Han','BYD Atto 3','BYD Seal','BYD Dolphin',
-  'Zeekr 001','Zeekr X','Zeekr 007',
-  'NIO ET5','NIO ET7','NIO EL6',
-  'Xpeng P7','Xpeng G6',
-  'Li Auto L7','Li Auto L8',
-  'Москвич 3е','Москвич 6е',
-  'Evolute i-Pro','Evolute i-Joy','Evolute i-Van',
-  'АМБЕРАВТО A5','EONYX E1','АТОМ',
-  'Xiaomi SU7','Voyah Free',
-  'Hyundai IONIQ 5','Hyundai IONIQ 6','Kia EV6',
-  'BMW iX','BMW i4','Porsche Taycan',
-];
+function getToken() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('partner_token');
+}
 
-export default function CabinetPage() {
-  const [me, setMe] = useState<Me | null>(null);
-  const [form, setForm] = useState<Partial<Provider>>({});
-  const [section, setSection] = useState<Section>('overview');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [loginError, setLoginError] = useState('');
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [newService, setNewService] = useState('');
-  const [newPhoto, setNewPhoto] = useState('');
-  const [evModels, setEvModels] = useState<string[]>(EV_MODELS_SHORT);
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'X-Partner-Token': getToken() || '' };
+}
 
-  const api = process.env.NEXT_PUBLIC_API_URL || '/api';
+// ── Утилиты ────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const t = localStorage.getItem('partner_token');
-    if (t) setToken(t);
-  }, []);
+function timeAgo(d: string) {
+  const s = (Date.now() - new Date(d).getTime()) / 1000;
+  if (s < 3600) return `${Math.round(s / 60)} мин. назад`;
+  if (s < 86400) return `${Math.round(s / 3600)} ч. назад`;
+  if (s < 172800) return 'вчера';
+  return new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
 
-  useEffect(() => {
-    if (!token) return;
-    fetch(`${api}/partners/me`, { headers: { 'X-Partner-Token': token } })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) { localStorage.removeItem('partner_token'); setToken(null); return; }
-        setMe(data);
-        if (data.provider) setForm(data.provider);
-      });
-    fetch(`${api}/partners/ev-models`)
-      .then(r => r.json())
-      .then(d => { if (d.models?.length) setEvModels(d.models); })
-      .catch(() => {});
-  }, [token]);
+function Stars({ v }: { v: number }) {
+  return <span style={{ color: '#EF9F27', fontSize: 13 }}>{'★'.repeat(Math.round(v))}{'☆'.repeat(5 - Math.round(v))}</span>;
+}
 
-  const login = async () => {
-    setLoginError('');
-    try {
-      const res = await fetch(`${api}/partners/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginForm),
-      });
-      if (!res.ok) { setLoginError('Неверный email или пароль'); return; }
-      const data = await res.json();
-      localStorage.setItem('partner_token', data.token);
-      setToken(data.token);
-    } catch { setLoginError('Ошибка соединения'); }
-  };
+function profileCompletion(p: Provider): number {
+  const fields = [p.name, p.tagline, p.description, p.city, p.phone,
+    p.address, p.workingHours, p.logoUrl,
+    p.services.length > 0, p.brands.length > 0, p.photos.length > 0];
+  return Math.round(fields.filter(Boolean).length / fields.length * 100);
+}
 
-  const save = async (overrides?: Partial<Provider>) => {
-    if (!token) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`${api}/partners/provider`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-Partner-Token': token },
-        body: JSON.stringify({ ...form, ...overrides }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setForm(updated);
-        setMe(m => m ? { ...m, provider: updated } : m);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2500);
-      }
-    } catch {}
-    setSaving(false);
-  };
+// ── Компоненты разделов ─────────────────────────────────────────────────────
 
-  const toggleBrand = (b: string) => setForm(f => ({
-    ...f, brands: f.brands?.includes(b) ? f.brands.filter(x => x !== b) : [...(f.brands||[]), b],
-  }));
-  const addService = () => {
-    if (!newService.trim()) return;
-    setForm(f => ({ ...f, services: [...(f.services||[]), newService.trim()] }));
-    setNewService('');
-  };
-  const removeService = (s: string) => setForm(f => ({ ...f, services: f.services?.filter(x => x !== s) }));
-  const addPhoto = () => {
-    if (!newPhoto.trim()) return;
-    setForm(f => ({ ...f, photos: [...(f.photos||[]), newPhoto.trim()] }));
-    setNewPhoto('');
-  };
-  const removePhoto = (u: string) => setForm(f => ({ ...f, photos: f.photos?.filter(x => x !== u) }));
-
-  const completeness = (() => {
-    if (!form) return 0;
-    let done = 0, total = 6;
-    if (form.name) done++;
-    if (form.phone || form.telegram) done++;
-    if ((form.services||[]).length > 0) done++;
-    if ((form.photos||[]).length > 0) done++;
-    if (form.logoUrl) done++;
-    if ((form.brands||[]).length > 0) done++;
-    return Math.round((done / total) * 100);
-  })();
-
-  const nav: { id: Section; icon: string; label: string; badge?: number }[] = [
-    { id: 'overview', icon: 'ti-layout-dashboard', label: 'Обзор' },
-    { id: 'page', icon: 'ti-file-description', label: 'Моя страница' },
-    { id: 'leads', icon: 'ti-messages', label: 'Заявки' },
-    { id: 'photos', icon: 'ti-photo', label: 'Фото и логотип' },
-    { id: 'services', icon: 'ti-list-check', label: 'Услуги и марки' },
-    { id: 'contacts', icon: 'ti-map-pin', label: 'Контакты' },
-    { id: 'reviews', icon: 'ti-star', label: 'Отзывы' },
-  ];
-
-  // ── Экран входа ──────────────────────────────────────────────────────────
-  if (!token) return (
-    <div className="min-h-screen bg-paper-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-[380px]">
-        <div className="text-center mb-8">
-          <a href="/" className="font-bold text-xl text-ink-900">proev<span className="text-volt-600">.ru</span></a>
-          <h1 className="text-xl font-semibold text-ink-900 mt-4 mb-1">Кабинет партнёра</h1>
-          <p className="text-sm text-muted">Войдите чтобы управлять своей страницей</p>
-        </div>
-        <div className="bg-white border border-line rounded-2xl p-6 space-y-3">
-          <div>
-            <label className="text-xs font-medium text-muted uppercase tracking-wide block mb-1.5">Email</label>
-            <input type="email" value={loginForm.email}
-              onChange={e => setLoginForm(f => ({...f, email: e.target.value}))}
-              placeholder="info@evservice.ru"
-              className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted uppercase tracking-wide block mb-1.5">Пароль</label>
-            <input type="password" value={loginForm.password}
-              onChange={e => setLoginForm(f => ({...f, password: e.target.value}))}
-              onKeyDown={e => e.key === 'Enter' && login()}
-              placeholder="Пришёл в письме при одобрении"
-              className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600" />
-          </div>
-          {loginError && <p className="text-xs text-red-500 flex items-center gap-1"><i className="ti ti-alert-circle" aria-hidden="true"/>{loginError}</p>}
-          <button onClick={login}
-            className="w-full py-3 bg-ink-900 text-white rounded-xl text-sm font-semibold hover:bg-ink-700 transition-colors">
-            Войти
-          </button>
-          <p className="text-center text-xs text-muted pt-1">
-            Нет аккаунта? <a href="/partner" className="text-volt-600 underline underline-offset-2">Подать заявку</a>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (!me) return (
-    <div className="min-h-screen bg-paper-50 flex items-center justify-center">
-      <div className="text-muted text-sm flex items-center gap-2">
-        <i className="ti ti-loader-2 text-xl animate-spin" aria-hidden="true"/>Загружаем кабинет...
-      </div>
-    </div>
-  );
-
-  const p = form;
-  const provider = me.provider;
+function Overview({ provider, leads, reviews }: { provider: Provider; leads: Lead[]; reviews: Review[] }) {
+  const pct = profileCompletion(provider);
+  const newLeads = leads.filter(l => l.status === 'new');
 
   return (
-    <div className="min-h-screen bg-paper-50 flex flex-col md:flex-row">
-
-      {/* ── Боковое меню ── */}
-      <aside className="w-full md:w-56 md:min-h-screen bg-white border-b md:border-b-0 md:border-r border-line flex-shrink-0">
-        {/* Лого */}
-        <div className="p-4 border-b border-line">
-          <a href="/" className="font-bold text-base text-ink-900">proev<span className="text-volt-600">.ru</span></a>
-          <div className="mt-2.5">
-            <div className="text-sm font-semibold text-ink-900 truncate">{provider?.name || me.name}</div>
-            <div className="text-xs text-muted mt-0.5">{provider?.category?.name || 'Партнёр'}</div>
+    <div className="space-y-5">
+      {/* Заполненность профиля */}
+      {pct < 100 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex justify-between text-sm mb-2">
+            <span className="font-medium text-amber-900">Заполненность профиля</span>
+            <span className="font-semibold text-amber-700">{pct}%</span>
           </div>
+          <div className="h-1.5 bg-amber-100 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          {pct < 70 && (
+            <p className="text-xs text-amber-700 mt-2">
+              {!provider.photos.length && '📷 Добавьте фотографии — страницы с фото получают в 3× больше заявок. '}
+              {!provider.tagline && '✏️ Добавьте слоган — он показывается в каталоге. '}
+              {!provider.phone && '📞 Укажите телефон. '}
+            </p>
+          )}
         </div>
+      )}
 
-        {/* Навигация */}
-        <nav className="flex md:flex-col overflow-x-auto md:overflow-visible py-2 md:py-3 px-2 md:px-0 gap-1 md:gap-0.5">
-          {nav.map(item => (
-            <button key={item.id} onClick={() => setSection(item.id)}
-              className={`flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg md:rounded-none md:border-r-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-                section === item.id
-                  ? 'bg-paper-50 text-ink-900 font-medium md:border-r-2 md:border-volt-600'
-                  : 'text-muted hover:text-ink-900 hover:bg-paper-50 md:border-transparent'
-              }`}>
-              <i className={`ti ${item.icon} text-base`} aria-hidden="true"/>
-              {item.label}
-              {item.badge ? (
-                <span className="ml-auto text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{item.badge}</span>
-              ) : null}
-            </button>
-          ))}
-        </nav>
+      {/* Метрики */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { val: leads.length, lbl: 'Заявок всего', icon: 'ti-mail' },
+          { val: newLeads.length, lbl: 'Новых заявок', icon: 'ti-bell', accent: newLeads.length > 0 },
+          { val: provider.ratingAvg ? provider.ratingAvg.toFixed(1) : '—', lbl: 'Рейтинг', icon: 'ti-star' },
+        ].map(m => (
+          <div key={m.lbl} className={`rounded-xl p-4 ${m.accent ? 'bg-red-50 border border-red-200' : 'bg-paper-50 border border-line'}`}>
+            <i className={`ti ${m.icon} text-xl mb-2 block ${m.accent ? 'text-red-500' : 'text-muted'}`} aria-hidden="true" />
+            <div className={`text-2xl font-bold ${m.accent ? 'text-red-700' : 'text-ink-900'}`}>{m.val}</div>
+            <div className="text-xs text-muted mt-0.5">{m.lbl}</div>
+          </div>
+        ))}
+      </div>
 
-        {/* Пользователь */}
-        <div className="hidden md:flex items-center gap-2.5 p-4 border-t border-line mt-auto">
-          <div className="w-7 h-7 rounded-full bg-volt-600/10 flex items-center justify-center text-xs font-semibold text-volt-600 shrink-0">
-            {me.name.slice(0,2).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium text-ink-900 truncate">{me.name}</div>
-            <div className="text-[11px] text-muted truncate">{me.email}</div>
-          </div>
-          <button onClick={() => { localStorage.removeItem('partner_token'); setToken(null); }}
-            title="Выйти"
-            className="text-muted hover:text-red-500 transition-colors">
-            <i className="ti ti-logout text-base" aria-hidden="true"/>
-          </button>
+      {/* Последние заявки */}
+      <div className="bg-white border border-line rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-line flex justify-between items-center">
+          <h3 className="text-sm font-semibold text-ink-900 flex items-center gap-2">
+            <i className="ti ti-clock text-base text-muted" aria-hidden="true" />
+            Последние заявки
+          </h3>
+          {leads.length === 0 && <span className="text-xs text-muted">Пока нет</span>}
         </div>
-      </aside>
-
-      {/* ── Основной контент ── */}
-      <main className="flex-1 p-4 md:p-8 min-w-0">
-
-        {/* Уведомление о сохранении */}
-        {saved && (
-          <div className="fixed top-4 right-4 z-50 bg-ink-900 text-white text-sm px-4 py-2.5 rounded-xl flex items-center gap-2">
-            <i className="ti ti-check text-green-400" aria-hidden="true"/>Сохранено
+        {leads.slice(0, 5).map((l, i) => (
+          <div key={l.id} className={`flex items-center gap-3 px-4 py-3 ${i < Math.min(4, leads.length - 1) ? 'border-b border-line' : ''}`}>
+            <div className="w-8 h-8 rounded-full bg-paper-50 border border-line flex items-center justify-center text-xs font-semibold text-ink-900">
+              {l.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-ink-900">{l.name}</div>
+              {l.message && <div className="text-xs text-muted truncate">{l.message}</div>}
+            </div>
+            <div className="text-right shrink-0">
+              <span className={`text-[11px] px-2 py-0.5 rounded-full ${l.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-paper-50 text-muted border border-line'}`}>
+                {l.status === 'new' ? 'Новая' : 'В работе'}
+              </span>
+              <div className="text-[11px] text-muted mt-0.5">{timeAgo(l.createdAt)}</div>
+            </div>
+          </div>
+        ))}
+        {leads.length === 0 && (
+          <div className="py-8 text-center text-sm text-muted">
+            <i className="ti ti-mail-off text-2xl block mb-2 opacity-30" aria-hidden="true" />
+            Заявок пока нет. Опубликуйте страницу — и они появятся.
           </div>
         )}
+      </div>
 
-        {/* ── ОБЗОР ── */}
-        {section === 'overview' && (
-          <div>
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h1 className="text-xl font-semibold text-ink-900">Обзор</h1>
-                <p className="text-sm text-muted mt-1">Добро пожаловать в панель управления</p>
+      {/* Последние отзывы */}
+      {reviews.length > 0 && (
+        <div className="bg-white border border-line rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-line">
+            <h3 className="text-sm font-semibold text-ink-900 flex items-center gap-2">
+              <i className="ti ti-star text-base text-muted" aria-hidden="true" />
+              Последние отзывы
+            </h3>
+          </div>
+          {reviews.slice(0, 3).map((r, i) => (
+            <div key={r.id} className={`px-4 py-3 ${i < Math.min(2, reviews.length - 1) ? 'border-b border-line' : ''}`}>
+              <div className="flex justify-between items-start mb-1">
+                <span className="text-sm font-medium text-ink-900">{r.author?.name || 'Пользователь'}</span>
+                <Stars v={r.rating} />
               </div>
-              {p.slug && (
-                <a href={`/services/${p.slug}`} target="_blank"
-                  className="text-sm text-volt-600 flex items-center gap-1.5 border border-volt-600 px-3 py-1.5 rounded-lg hover:bg-volt-600/10 transition-colors">
-                  <i className="ti ti-external-link text-sm" aria-hidden="true"/>Просмотр
-                </a>
-              )}
+              {r.text && <p className="text-xs text-muted leading-relaxed">{r.text}</p>}
+              <p className="text-[11px] text-muted mt-1">{timeAgo(r.createdAt)}</p>
             </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-            {/* Баннер публикации */}
-            <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl mb-6 border ${
-              p.isPublished ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
-            }`}>
-              <div className="flex items-center gap-3">
-                <i className={`ti ${p.isPublished ? 'ti-eye' : 'ti-eye-off'} text-xl`}
-                  style={{ color: p.isPublished ? '#0F6E56' : '#854F0B' }} aria-hidden="true"/>
-                <div>
-                  <div className="text-sm font-semibold" style={{ color: p.isPublished ? '#0F6E56' : '#633806' }}>
-                    {p.isPublished ? 'Страница опубликована' : 'Страница скрыта'}
-                  </div>
-                  <div className="text-xs mt-0.5" style={{ color: p.isPublished ? '#1D9E75' : '#854F0B' }}>
-                    {p.isPublished ? 'Клиенты могут найти вас в каталоге' : 'Заполните профиль и опубликуйте — вас увидят клиенты'}
-                  </div>
-                </div>
-              </div>
-              <button onClick={() => save({ isPublished: !p.isPublished })}
-                className="text-sm font-semibold px-4 py-2 rounded-lg transition-colors shrink-0"
-                style={p.isPublished
-                  ? { background: '#fee2e2', color: '#991b1b' }
-                  : { background: '#0F6E56', color: '#fff' }}>
-                {p.isPublished ? 'Снять с публикации' : 'Опубликовать'}
+function PageEditor({ provider, evModels, onSave, saving, saved }: {
+  provider: Provider; evModels: string[];
+  onSave: (data: Partial<Provider>) => void;
+  saving: boolean; saved: boolean;
+}) {
+  const [form, setForm] = useState<Partial<Provider>>(provider);
+  const [newService, setNewService] = useState('');
+  const [newPhoto, setNewPhoto] = useState('');
+
+  const upd = (k: keyof Provider, v: any) => setForm(f => ({ ...f, [k]: v }));
+  const addService = () => { if (newService.trim()) { upd('services', [...(form.services || []), newService.trim()]); setNewService(''); } };
+  const removeService = (s: string) => upd('services', (form.services || []).filter(x => x !== s));
+  const toggleBrand = (b: string) => upd('brands', (form.brands || []).includes(b) ? (form.brands || []).filter(x => x !== b) : [...(form.brands || []), b]);
+  const addPhoto = () => { if (newPhoto.trim()) { upd('photos', [...(form.photos || []), newPhoto.trim()]); setNewPhoto(''); } };
+  const removePhoto = (u: string) => upd('photos', (form.photos || []).filter(x => x !== u));
+
+  const inp = 'w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600 bg-white transition-colors';
+
+  return (
+    <div className="space-y-4">
+      {/* Основная информация */}
+      <Card title="Основная информация" icon="ti-building-store">
+        <div className="space-y-3">
+          <Field label="Название"><input value={form.name || ''} onChange={e => upd('name', e.target.value)} placeholder="EV Service Moscow" className={inp} /></Field>
+          <Field label="Слоган — одна фраза о вашем преимуществе">
+            <input value={form.tagline || ''} onChange={e => upd('tagline', e.target.value)} placeholder="Сервис для электромобилей с гарантией на все работы" className={inp} />
+          </Field>
+          <Field label="Подробное описание">
+            <textarea value={form.description || ''} onChange={e => upd('description', e.target.value)} rows={4} placeholder="Расскажите о сервисе, опыте, что умеете лучше всего..." className={`${inp} resize-none`} />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Год основания"><input type="number" value={form.yearFounded || ''} onChange={e => upd('yearFounded', parseInt(e.target.value) || undefined)} placeholder="2019" className={inp} /></Field>
+            <Field label="Режим работы"><input value={form.workingHours || ''} onChange={e => upd('workingHours', e.target.value)} placeholder="Пн–Вс 9:00–21:00" className={inp} /></Field>
+          </div>
+        </div>
+      </Card>
+
+      {/* Контакты */}
+      <Card title="Контакты" icon="ti-phone">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Город"><input value={form.city || ''} onChange={e => upd('city', e.target.value)} placeholder="Москва" className={inp} /></Field>
+          <Field label="Телефон"><input value={form.phone || ''} onChange={e => upd('phone', e.target.value)} placeholder="+7 (___) ___-__-__" className={inp} /></Field>
+          <Field label="Адрес"><input value={form.address || ''} onChange={e => upd('address', e.target.value)} placeholder="ул. Нагатинская, 18с2" className={inp} /></Field>
+          <Field label="Email"><input value={form.email || ''} onChange={e => upd('email', e.target.value)} placeholder="info@evservice.ru" className={inp} /></Field>
+          <Field label="Telegram (@username)"><input value={form.telegram || ''} onChange={e => upd('telegram', e.target.value)} placeholder="@evservice_msk" className={inp} /></Field>
+          <Field label="WhatsApp"><input value={form.whatsapp || ''} onChange={e => upd('whatsapp', e.target.value)} placeholder="+79001234567" className={inp} /></Field>
+          <Field label="Сайт" className="col-span-2"><input value={form.website || ''} onChange={e => upd('website', e.target.value)} placeholder="https://evservice.ru" className={inp} /></Field>
+        </div>
+      </Card>
+
+      {/* Услуги */}
+      <Card title="Услуги" icon="ti-list-check">
+        <div className="flex flex-wrap gap-2 mb-3">
+          {(form.services || []).map(s => (
+            <span key={s} className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-paper-50 border border-line rounded-full text-ink-900">
+              {s}
+              <button onClick={() => removeService(s)} className="text-muted hover:text-red-500 ml-0.5">
+                <i className="ti ti-x text-xs" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input value={newService} onChange={e => setNewService(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addService()}
+            placeholder="Введите услугу и нажмите Enter..."
+            className={`flex-1 ${inp}`} />
+          <button onClick={addService} className="px-3 py-2 bg-ink-900 text-white rounded-lg text-sm hover:bg-ink-700 transition-colors">
+            <i className="ti ti-plus" aria-hidden="true" />
+          </button>
+        </div>
+        <p className="text-[11px] text-muted mt-2">Примеры: Диагностика батареи, ТО по регламенту, Ремонт мотора, Замена разъёма</p>
+      </Card>
+
+      {/* Марки */}
+      <Card title="Марки электромобилей" icon="ti-car">
+        <p className="text-xs text-muted mb-3">Выберите марки с которыми работаете:</p>
+        <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto pr-1">
+          {evModels.map(b => (
+            <button key={b} onClick={() => toggleBrand(b)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${(form.brands || []).includes(b) ? 'border-volt-600 bg-volt-600/10 text-volt-600 font-semibold' : 'border-line text-muted hover:border-graphite-900/30'}`}>
+              {b}
+            </button>
+          ))}
+        </div>
+        {(form.brands || []).length > 0 && (
+          <p className="text-[11px] text-muted mt-2">Выбрано: {(form.brands || []).length} марок</p>
+        )}
+      </Card>
+
+      {/* Фото */}
+      <Card title="Фотографии сервиса" icon="ti-photo">
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {(form.photos || []).map((url, i) => (
+            <div key={i} className="relative group aspect-video rounded-lg overflow-hidden border border-line bg-paper-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="w-full h-full object-cover" />
+              <button onClick={() => removePhoto(url)}
+                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <i className="ti ti-x text-[10px]" aria-hidden="true" />
               </button>
             </div>
-
-            {/* Прогресс заполнения */}
-            <div className="bg-white border border-line rounded-xl p-5 mb-5">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-muted">Заполненность профиля</span>
-                <span className="font-semibold text-ink-900">{completeness}%</span>
-              </div>
-              <div className="h-1.5 bg-paper-50 rounded-full overflow-hidden mb-4">
-                <div className="h-full rounded-full transition-all" style={{ width: `${completeness}%`, background: completeness === 100 ? '#1D9E75' : '#0BA5CC' }}/>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Название и слоган', done: !!p.name },
-                  { label: 'Контакты', done: !!(p.phone || p.telegram) },
-                  { label: 'Список услуг', done: (p.services||[]).length > 0 },
-                  { label: 'Фотографии', done: (p.photos||[]).length > 0 },
-                  { label: 'Логотип', done: !!p.logoUrl },
-                  { label: 'Марки EV', done: (p.brands||[]).length > 0 },
-                ].map(item => (
-                  <div key={item.label} className="flex items-center gap-2 text-sm">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${item.done ? 'bg-green-500' : 'bg-gray-300'}`}/>
-                    <span className={item.done ? 'text-ink-900' : 'text-muted'}>{item.label}</span>
-                    {!item.done && <i className="ti ti-arrow-right text-xs text-muted ml-auto" aria-hidden="true"/>}
-                  </div>
-                ))}
-              </div>
+          ))}
+          {(form.photos || []).length < 6 && (
+            <div className="aspect-video rounded-lg border-2 border-dashed border-line flex items-center justify-center text-muted">
+              <i className="ti ti-plus text-xl" aria-hidden="true" />
             </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <input value={newPhoto} onChange={e => setNewPhoto(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addPhoto()}
+            placeholder="Вставьте URL фотографии..."
+            className={`flex-1 ${inp}`} />
+          <button onClick={addPhoto} className="px-3 py-2 bg-ink-900 text-white rounded-lg text-sm hover:bg-ink-700 transition-colors">
+            <i className="ti ti-plus" aria-hidden="true" />
+          </button>
+        </div>
+        <p className="text-[11px] text-muted mt-2">До 6 фото. Рекомендуемый размер 800×600 пикс. Вставьте прямую ссылку на изображение.</p>
+      </Card>
 
-            {/* Статистика */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { val: '—', label: 'Просмотров', sub: 'За последние 7 дней', icon: 'ti-eye' },
-                { val: '—', label: 'Заявок', sub: 'Всего получено', icon: 'ti-messages' },
-                { val: p.ratingAvg ? p.ratingAvg.toFixed(1) : '—', label: 'Рейтинг', sub: `${p.reviewCount || 0} отзывов`, icon: 'ti-star' },
-              ].map(s => (
-                <div key={s.label} className="bg-white border border-line rounded-xl p-4">
-                  <i className={`ti ${s.icon} text-base text-muted mb-2 block`} aria-hidden="true"/>
-                  <div className="text-2xl font-semibold text-ink-900 font-mono">{s.val}</div>
-                  <div className="text-xs font-medium text-ink-900 mt-1">{s.label}</div>
-                  <div className="text-xs text-muted mt-0.5">{s.sub}</div>
+      {/* Логотип */}
+      <Card title="Логотип" icon="ti-brand-abstract">
+        <div className="flex gap-4 items-start">
+          <div className="w-16 h-16 rounded-xl border border-line bg-paper-50 flex items-center justify-center overflow-hidden shrink-0">
+            {form.logoUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={form.logoUrl} alt="Логотип" className="w-full h-full object-cover" />
+              : <i className="ti ti-photo text-2xl text-muted" aria-hidden="true" />}
+          </div>
+          <Field label="URL логотипа" className="flex-1">
+            <input value={form.logoUrl || ''} onChange={e => upd('logoUrl', e.target.value)}
+              placeholder="https://evservice.ru/logo.png" className={inp} />
+          </Field>
+        </div>
+      </Card>
+
+      {/* Сохранить */}
+      <div className="flex items-center justify-between bg-white border border-line rounded-xl p-4">
+        <p className="text-xs text-muted">Изменения сохраняются только после нажатия кнопки</p>
+        <div className="flex items-center gap-3">
+          {saved && <span className="text-sm text-green-600 flex items-center gap-1"><i className="ti ti-check" aria-hidden="true" />Сохранено</span>}
+          <button onClick={() => onSave(form)} disabled={saving}
+            className="px-6 py-2.5 bg-ink-900 text-white rounded-xl text-sm font-semibold hover:bg-ink-700 transition-colors disabled:opacity-50">
+            {saving ? 'Сохраняем...' : 'Сохранить изменения'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeadsSection({ leads }: { leads: Lead[] }) {
+  const [filter, setFilter] = useState<'all' | 'new' | 'done'>('all');
+  const filtered = leads.filter(l => filter === 'all' ? true : filter === 'new' ? l.status === 'new' : l.status !== 'new');
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4">
+        {[['all', 'Все'], ['new', 'Новые'], ['done', 'Обработанные']].map(([v, lbl]) => (
+          <button key={v} onClick={() => setFilter(v as any)}
+            className={`text-sm px-4 py-1.5 rounded-full border transition-colors ${filter === v ? 'border-volt-600 bg-volt-600/10 text-volt-600 font-semibold' : 'border-line text-muted hover:border-graphite-900/30'}`}>
+            {lbl}
+            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${filter === v ? 'bg-volt-600/20 text-volt-600' : 'bg-paper-50 text-muted'}`}>
+              {v === 'all' ? leads.length : v === 'new' ? leads.filter(l => l.status === 'new').length : leads.filter(l => l.status !== 'new').length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="py-16 text-center bg-white border border-line rounded-xl">
+          <i className="ti ti-mail-off text-3xl text-muted block mb-3 opacity-30" aria-hidden="true" />
+          <p className="text-sm text-muted">Заявок нет</p>
+        </div>
+      ) : (
+        <div className="bg-white border border-line rounded-xl overflow-hidden">
+          {filtered.map((l, i) => (
+            <div key={l.id} className={`flex gap-3 p-4 ${i < filtered.length - 1 ? 'border-b border-line' : ''}`}>
+              <div className="w-9 h-9 rounded-full bg-paper-50 border border-line flex items-center justify-center text-sm font-semibold text-ink-900 shrink-0">
+                {l.name.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-medium text-ink-900">{l.name}</span>
+                  <a href={`tel:${l.phone}`} className="text-xs text-volt-600 hover:underline">{l.phone}</a>
+                </div>
+                {l.message && <p className="text-xs text-muted leading-relaxed">{l.message}</p>}
+                <p className="text-[11px] text-muted mt-1">{timeAgo(l.createdAt)}</p>
+              </div>
+              <span className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full h-fit ${l.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-paper-50 text-muted border border-line'}`}>
+                {l.status === 'new' ? 'Новая' : 'Обработана'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReviewsSection({ reviews, provider }: { reviews: Review[]; provider: Provider }) {
+  const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) : 0;
+  const dist = [5,4,3,2,1].map(s => ({ s, n: reviews.filter(r => r.rating === s).length }));
+
+  return (
+    <div className="space-y-4">
+      {reviews.length > 0 && (
+        <div className="bg-white border border-line rounded-xl p-5">
+          <div className="flex items-start gap-6">
+            <div className="text-center shrink-0">
+              <div className="text-4xl font-bold text-ink-900">{avg.toFixed(1)}</div>
+              <Stars v={avg} />
+              <div className="text-xs text-muted mt-1">{reviews.length} отзывов</div>
+            </div>
+            <div className="flex-1 space-y-1.5">
+              {dist.map(({ s, n }) => (
+                <div key={s} className="flex items-center gap-2">
+                  <span className="text-xs text-muted w-3 text-right">{s}</span>
+                  <i className="ti ti-star text-xs text-amber-400" aria-hidden="true" />
+                  <div className="flex-1 h-1.5 bg-paper-50 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-400 rounded-full" style={{ width: reviews.length ? `${n / reviews.length * 100}%` : '0%' }} />
+                  </div>
+                  <span className="text-[11px] text-muted w-3">{n}</span>
                 </div>
               ))}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ── МОЯ СТРАНИЦА ── */}
-        {section === 'page' && (
-          <div>
-            <PageTitle title="Моя страница" sub="Основная информация лендинга"/>
-            <Card title="О компании" icon="ti-building-store">
-              <Field label="Название компании">
-                <input value={p.name||''} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
-                  placeholder="EV Service Moscow" className={inputCls}/>
-              </Field>
-              <Field label="Слоган — одна цепляющая фраза">
-                <input value={p.tagline||''} onChange={e=>setForm(f=>({...f,tagline:e.target.value}))}
-                  placeholder="Сервис для электромобилей с гарантией" className={inputCls}/>
-                <p className="text-xs text-muted mt-1">Показывается под названием на лендинге</p>
-              </Field>
-              <Field label="Подробное описание">
-                <textarea value={p.description||''} onChange={e=>setForm(f=>({...f,description:e.target.value}))}
-                  rows={4} placeholder="Расскажите о сервисе, опыте работы, преимуществах..."
-                  className={`${inputCls} resize-none`}/>
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Год основания">
-                  <input type="number" value={p.yearFounded||''}
-                    onChange={e=>setForm(f=>({...f,yearFounded:parseInt(e.target.value)||undefined}))}
-                    placeholder="2019" className={inputCls}/>
-                </Field>
-                <Field label="Часы работы">
-                  <input value={p.workingHours||''} onChange={e=>setForm(f=>({...f,workingHours:e.target.value}))}
-                    placeholder="Пн–Вс 9:00–21:00" className={inputCls}/>
-                </Field>
+      {reviews.length === 0 ? (
+        <div className="py-16 text-center bg-white border border-line rounded-xl">
+          <i className="ti ti-star-off text-3xl text-muted block mb-3 opacity-30" aria-hidden="true" />
+          <p className="text-sm text-muted mb-1">Отзывов пока нет</p>
+          <p className="text-xs text-muted">Отзывы появляются после того как клиенты оставят заявки</p>
+        </div>
+      ) : (
+        <div className="bg-white border border-line rounded-xl overflow-hidden">
+          {reviews.map((r, i) => (
+            <div key={r.id} className={`p-4 ${i < reviews.length - 1 ? 'border-b border-line' : ''}`}>
+              <div className="flex justify-between items-start mb-1.5">
+                <span className="text-sm font-medium text-ink-900">{r.author?.name || 'Пользователь proev.ru'}</span>
+                <Stars v={r.rating} />
               </div>
-            </Card>
-            <SaveBar saving={saving} onSave={() => save()}/>
-          </div>
-        )}
-
-        {/* ── ЗАЯВКИ ── */}
-        {section === 'leads' && (
-          <div>
-            <PageTitle title="Заявки" sub="Обращения клиентов через вашу страницу"/>
-            <div className="bg-white border border-line rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-line flex items-center justify-between">
-                <span className="text-sm font-medium text-ink-900">Входящие заявки</span>
-                <span className="text-xs text-muted">Обновляется в реальном времени</span>
-              </div>
-              <div className="divide-y divide-line">
-                {leads.length === 0 ? (
-                  <div className="py-16 text-center">
-                    <i className="ti ti-messages text-4xl text-muted/30 block mb-3" aria-hidden="true"/>
-                    <p className="text-sm text-muted">Заявок пока нет</p>
-                    <p className="text-xs text-muted mt-1">Они появятся когда клиенты заполнят форму на вашей странице</p>
-                  </div>
-                ) : leads.map(lead => (
-                  <div key={lead.id} className="p-4 flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-sm font-medium text-ink-900">{lead.name}</div>
-                      <div className="text-xs text-muted mt-0.5">{lead.phone}</div>
-                      {lead.message && <div className="text-xs text-muted mt-1">{lead.message}</div>}
-                    </div>
-                    <div className="text-xs text-muted shrink-0">
-                      {new Date(lead.createdAt).toLocaleDateString('ru-RU')}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {r.text && <p className="text-sm text-muted leading-relaxed">{r.text}</p>}
+              <p className="text-[11px] text-muted mt-1.5">{timeAgo(r.createdAt)}</p>
             </div>
-          </div>
-        )}
-
-        {/* ── ФОТО И ЛОГОТИП ── */}
-        {section === 'photos' && (
-          <div>
-            <PageTitle title="Фото и логотип" sub="Визуальное оформление вашей страницы"/>
-            <Card title="Фотографии сервиса" icon="ti-photo">
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {(p.photos||[]).map((url, i) => (
-                  <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border border-line bg-paper-50">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="" className="w-full h-full object-cover"/>
-                    <button onClick={() => removePhoto(url)}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full text-xs items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex">
-                      <i className="ti ti-x" aria-hidden="true"/>
-                    </button>
-                  </div>
-                ))}
-                {(p.photos||[]).length < 6 && (
-                  <div className="aspect-square rounded-xl border-2 border-dashed border-line flex items-center justify-center text-muted">
-                    <i className="ti ti-plus text-2xl" aria-hidden="true"/>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <input value={newPhoto} onChange={e=>setNewPhoto(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&addPhoto()}
-                  placeholder="Вставьте URL фотографии..."
-                  className={`flex-1 ${inputCls}`}/>
-                <button onClick={addPhoto}
-                  className="px-4 py-2.5 bg-ink-900 text-white rounded-lg text-sm font-medium">
-                  Добавить
-                </button>
-              </div>
-              <p className="text-xs text-muted mt-2">До 6 фото. Рекомендуемый размер: 800×600 пикс.</p>
-            </Card>
-            <Card title="Логотип" icon="ti-award">
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-xl border border-line bg-paper-50 overflow-hidden flex items-center justify-center shrink-0">
-                  {p.logoUrl
-                    ? <img src={p.logoUrl} alt="Логотип" className="w-full h-full object-cover"/>
-                    : <i className="ti ti-building-store text-2xl text-muted" aria-hidden="true"/>
-                  }
-                </div>
-                <div className="flex-1">
-                  <Field label="URL логотипа">
-                    <input value={p.logoUrl||''} onChange={e=>setForm(f=>({...f,logoUrl:e.target.value}))}
-                      placeholder="https://evservice.ru/logo.png" className={inputCls}/>
-                  </Field>
-                  <p className="text-xs text-muted mt-1">Рекомендуемый размер: 200×200 пикс., квадратный формат</p>
-                </div>
-              </div>
-            </Card>
-            <SaveBar saving={saving} onSave={() => save()}/>
-          </div>
-        )}
-
-        {/* ── УСЛУГИ И МАРКИ ── */}
-        {section === 'services' && (
-          <div>
-            <PageTitle title="Услуги и марки" sub="Что вы делаете и с какими EV работаете"/>
-            <Card title="Список услуг" icon="ti-list-check">
-              <div className="flex flex-wrap gap-2 min-h-[40px] mb-3">
-                {(p.services||[]).map(s => (
-                  <span key={s} className="flex items-center gap-1.5 text-xs bg-paper-50 border border-line px-3 py-1.5 rounded-lg text-ink-900">
-                    {s}
-                    <button onClick={()=>removeService(s)} className="text-muted hover:text-red-500 transition-colors ml-1">
-                      <i className="ti ti-x text-xs" aria-hidden="true"/>
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input value={newService} onChange={e=>setNewService(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&addService()}
-                  placeholder="Диагностика батареи (Enter для добавления)"
-                  className={`flex-1 ${inputCls}`}/>
-                <button onClick={addService}
-                  className="px-4 py-2.5 bg-ink-900 text-white rounded-lg text-sm font-medium">
-                  +
-                </button>
-              </div>
-              <p className="text-xs text-muted mt-2">Например: ТО по регламенту, Ремонт мотора, Замена зарядного порта</p>
-            </Card>
-            <Card title="Марки электромобилей" icon="ti-car">
-              <p className="text-xs text-muted mb-3">Выберите марки, с которыми работаете:</p>
-              <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto">
-                {evModels.map(brand => (
-                  <button key={brand} onClick={()=>toggleBrand(brand)}
-                    className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
-                      (p.brands||[]).includes(brand)
-                        ? 'border-volt-600 bg-volt-600/10 text-volt-600 font-semibold'
-                        : 'border-line text-muted hover:border-ink-900/30 hover:text-ink-900'
-                    }`}>
-                    {brand}
-                  </button>
-                ))}
-              </div>
-              {(p.brands||[]).length > 0 && (
-                <p className="text-xs text-muted mt-3">
-                  Выбрано {(p.brands||[]).length}: {(p.brands||[]).slice(0,5).join(', ')}{(p.brands||[]).length > 5 ? ` и ещё ${(p.brands||[]).length - 5}` : ''}
-                </p>
-              )}
-            </Card>
-            <SaveBar saving={saving} onSave={() => save()}/>
-          </div>
-        )}
-
-        {/* ── КОНТАКТЫ ── */}
-        {section === 'contacts' && (
-          <div>
-            <PageTitle title="Контакты" sub="Как клиенты могут с вами связаться"/>
-            <Card title="Адрес и время работы" icon="ti-map-pin">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Город">
-                  <input value={p.city||''} onChange={e=>setForm(f=>({...f,city:e.target.value}))}
-                    placeholder="Москва" className={inputCls}/>
-                </Field>
-                <Field label="Время работы">
-                  <input value={p.workingHours||''} onChange={e=>setForm(f=>({...f,workingHours:e.target.value}))}
-                    placeholder="Пн–Вс 9:00–21:00" className={inputCls}/>
-                </Field>
-              </div>
-              <Field label="Полный адрес">
-                <input value={p.address||''} onChange={e=>setForm(f=>({...f,address:e.target.value}))}
-                  placeholder="ул. Нагатинская, 18с2" className={inputCls}/>
-              </Field>
-            </Card>
-            <Card title="Способы связи" icon="ti-phone">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Телефон">
-                  <div className="relative">
-                    <i className="ti ti-phone absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" aria-hidden="true"/>
-                    <input value={p.phone||''} onChange={e=>setForm(f=>({...f,phone:e.target.value}))}
-                      placeholder="+7 (___) ___-__-__" className={`${inputCls} pl-9`}/>
-                  </div>
-                </Field>
-                <Field label="Email">
-                  <div className="relative">
-                    <i className="ti ti-mail absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" aria-hidden="true"/>
-                    <input type="email" value={p.email||''} onChange={e=>setForm(f=>({...f,email:e.target.value}))}
-                      placeholder="info@evservice.ru" className={`${inputCls} pl-9`}/>
-                  </div>
-                </Field>
-                <Field label="Telegram">
-                  <div className="relative">
-                    <i className="ti ti-brand-telegram absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" aria-hidden="true"/>
-                    <input value={p.telegram||''} onChange={e=>setForm(f=>({...f,telegram:e.target.value}))}
-                      placeholder="@evservice_msk" className={`${inputCls} pl-9`}/>
-                  </div>
-                </Field>
-                <Field label="WhatsApp">
-                  <div className="relative">
-                    <i className="ti ti-brand-whatsapp absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" aria-hidden="true"/>
-                    <input value={p.whatsapp||''} onChange={e=>setForm(f=>({...f,whatsapp:e.target.value}))}
-                      placeholder="+79001234567" className={`${inputCls} pl-9`}/>
-                  </div>
-                </Field>
-                <Field label="Сайт компании" className="col-span-2">
-                  <div className="relative">
-                    <i className="ti ti-world absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" aria-hidden="true"/>
-                    <input value={p.website||''} onChange={e=>setForm(f=>({...f,website:e.target.value}))}
-                      placeholder="https://evservice.ru" className={`${inputCls} pl-9`}/>
-                  </div>
-                </Field>
-              </div>
-            </Card>
-            <SaveBar saving={saving} onSave={() => save()}/>
-          </div>
-        )}
-
-        {/* ── ОТЗЫВЫ ── */}
-        {section === 'reviews' && (
-          <div>
-            <PageTitle title="Отзывы" sub="Отзывы клиентов с вашей страницы"/>
-            <div className="bg-white border border-line rounded-xl overflow-hidden">
-              {(provider?.reviewCount || 0) === 0 ? (
-                <div className="py-16 text-center">
-                  <i className="ti ti-star text-4xl text-muted/30 block mb-3" aria-hidden="true"/>
-                  <p className="text-sm text-muted">Отзывов пока нет</p>
-                  <p className="text-xs text-muted mt-1">Они появятся когда клиенты оставят отзыв на вашей странице</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-line">
-                  {(provider as any)?.reviews?.map((r: Review) => (
-                    <div key={r.id} className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-ink-900">
-                          {r.author?.name || 'Пользователь proev.ru'}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span style={{ color: '#EF9F27', fontSize: 13 }}>
-                            {'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}
-                          </span>
-                          <span className="text-xs text-muted">
-                            {new Date(r.createdAt).toLocaleDateString('ru-RU')}
-                          </span>
-                        </div>
-                      </div>
-                      {r.text && <p className="text-sm text-muted leading-relaxed">{r.text}</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-      </main>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-const inputCls = 'w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600 bg-white transition-colors';
+function SettingsSection({ me, provider, onSave, saving }: { me: Me; provider: Provider; onSave: (d: any) => void; saving: boolean }) {
+  const [pwd, setPwd] = useState({ old: '', new1: '', new2: '' });
+  const inp = 'w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600';
 
-function PageTitle({ title, sub }: { title: string; sub: string }) {
   return (
-    <div className="mb-6">
-      <h1 className="text-xl font-semibold text-ink-900">{title}</h1>
-      <p className="text-sm text-muted mt-1">{sub}</p>
+    <div className="space-y-4 max-w-lg">
+      <Card title="Аккаунт" icon="ti-user">
+        <div className="space-y-3">
+          <Field label="Email (логин)"><input value={me.email} readOnly className={`${inp} bg-paper-50 text-muted`} /></Field>
+          <Field label="Имя / название"><input defaultValue={me.name} className={inp} /></Field>
+        </div>
+      </Card>
+
+      <Card title="Сменить пароль" icon="ti-lock">
+        <div className="space-y-3">
+          <Field label="Текущий пароль"><input type="password" value={pwd.old} onChange={e => setPwd(p => ({...p, old: e.target.value}))} className={inp} /></Field>
+          <Field label="Новый пароль"><input type="password" value={pwd.new1} onChange={e => setPwd(p => ({...p, new1: e.target.value}))} className={inp} /></Field>
+          <Field label="Повторите пароль"><input type="password" value={pwd.new2} onChange={e => setPwd(p => ({...p, new2: e.target.value}))} className={inp} /></Field>
+          <button className="w-full py-2.5 bg-ink-900 text-white rounded-lg text-sm font-semibold">Изменить пароль</button>
+        </div>
+      </Card>
+
+      <Card title="Тариф" icon="ti-crown">
+        <div className="flex items-start gap-3">
+          <div className={`px-3 py-1 rounded-full text-xs font-semibold ${provider.isPaidPlacement ? 'bg-amber-100 text-amber-800' : 'bg-paper-50 text-muted border border-line'}`}>
+            {provider.isPaidPlacement ? 'Партнёр' : 'Базовый'}
+          </div>
+          {!provider.isPaidPlacement && (
+            <p className="text-sm text-muted">Обновитесь до тарифа Партнёр — ваша карточка будет показываться первой в каталоге и выделяться синей рамкой.
+              <a href="mailto:partners@proev.ru" className="ml-1 text-volt-600 underline underline-offset-2">Написать нам</a>
+            </p>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
+
+// ── Переиспользуемые компоненты ─────────────────────────────────────────────
 
 function Card({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-line rounded-xl p-5 mb-4">
-      <h2 className="text-sm font-semibold text-ink-900 mb-4 flex items-center gap-2">
-        <i className={`ti ${icon} text-base`} style={{ color: '#0BA5CC' }} aria-hidden="true"/>
-        {title}
-      </h2>
-      <div className="space-y-3">{children}</div>
+    <div className="bg-white border border-line rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-line flex items-center gap-2">
+        <i className={`ti ${icon} text-base text-muted`} aria-hidden="true" />
+        <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
+      </div>
+      <div className="p-4">{children}</div>
     </div>
   );
 }
@@ -648,21 +474,253 @@ function Card({ title, icon, children }: { title: string; icon: string; children
 function Field({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <label className="text-xs font-medium text-muted uppercase tracking-wide block mb-1.5">{label}</label>
+      <label className="text-xs text-muted mb-1 block">{label}</label>
       {children}
     </div>
   );
 }
 
-function SaveBar({ saving, onSave }: { saving: boolean; onSave: () => void }) {
+// ── Экран входа ─────────────────────────────────────────────────────────────
+
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    setErr(''); setLoading(true);
+    try {
+      const res = await fetch(`${API}/partners/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) { setErr('Неверный email или пароль'); setLoading(false); return; }
+      const data = await res.json();
+      localStorage.setItem('partner_token', data.token);
+      onLogin();
+    } catch { setErr('Ошибка соединения'); }
+    setLoading(false);
+  };
+
   return (
-    <div className="flex items-center justify-between pt-4 mt-2">
-      <p className="text-xs text-muted">Все поля необязательны — заполняйте постепенно</p>
-      <button onClick={onSave} disabled={saving}
-        className="px-6 py-2.5 bg-ink-900 text-white rounded-xl text-sm font-semibold hover:bg-ink-700 transition-colors disabled:opacity-50 flex items-center gap-2">
-        {saving && <i className="ti ti-loader-2 animate-spin text-sm" aria-hidden="true"/>}
-        {saving ? 'Сохраняем...' : 'Сохранить'}
-      </button>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-paper-50">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <a href="/" className="text-2xl font-bold text-ink-900">proev<span className="text-volt-600">.ru</span></a>
+          <h1 className="text-lg font-semibold text-ink-900 mt-4 mb-1">Кабинет партнёра</h1>
+          <p className="text-sm text-muted">Войдите чтобы управлять своей страницей</p>
+        </div>
+        <div className="bg-white border border-line rounded-2xl p-6 space-y-3">
+          <Field label="Email">
+            <input type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}
+              placeholder="info@evservice.ru" onKeyDown={e => e.key === 'Enter' && submit()}
+              className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600" />
+          </Field>
+          <Field label="Пароль">
+            <input type="password" value={form.password} onChange={e => setForm(f => ({...f, password: e.target.value}))}
+              placeholder="Пришёл в письме при одобрении" onKeyDown={e => e.key === 'Enter' && submit()}
+              className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600" />
+          </Field>
+          {err && <p className="text-xs text-red-500">{err}</p>}
+          <button onClick={submit} disabled={loading || !form.email || !form.password}
+            className="w-full py-3 bg-ink-900 text-white rounded-xl text-sm font-semibold hover:bg-ink-700 transition-colors disabled:opacity-50">
+            {loading ? 'Входим...' : 'Войти'}
+          </button>
+          <p className="text-center text-xs text-muted">
+            Нет аккаунта?{' '}
+            <a href="/partner" className="text-volt-600 underline underline-offset-2">Подать заявку</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Главный компонент ────────────────────────────────────────────────────────
+
+export default function CabinetPage() {
+  const [token, setToken] = useState<string | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [evModels, setEvModels] = useState<string[]>([]);
+  const [section, setSection] = useState<Section>('overview');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => { setToken(localStorage.getItem('partner_token')); }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    Promise.all([
+      fetch(`${API}/partners/me`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
+      fetch(`${API}/partners/ev-models`).then(r => r.json()).catch(() => ({ models: [] })),
+    ]).then(([meData, modData]) => {
+      if (!meData) { localStorage.removeItem('partner_token'); setToken(null); return; }
+      setMe(meData);
+      setEvModels(modData.models || []);
+    });
+  }, [token]);
+
+  useEffect(() => {
+    if (!me?.provider) return;
+    // Загружаем заявки и отзывы для провайдера
+    fetch(`${API}/service-providers/${me.provider.id}/reviews`).then(r => r.json()).then(setReviews).catch(() => {});
+  }, [me]);
+
+  const save = useCallback(async (data: Partial<Provider>) => {
+    if (!token) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/partners/provider`, {
+        method: 'PATCH', headers: authHeaders(), body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setMe(m => m ? { ...m, provider: updated } : m);
+        setSaved(true); setTimeout(() => setSaved(false), 2500);
+      }
+    } catch {}
+    setSaving(false);
+  }, [token]);
+
+  const togglePublish = useCallback(async () => {
+    if (!me?.provider) return;
+    await save({ isPublished: !me.provider.isPublished });
+  }, [me, save]);
+
+  const logout = () => { localStorage.removeItem('partner_token'); setToken(null); setMe(null); };
+
+  if (!token) return <LoginScreen onLogin={() => setToken(localStorage.getItem('partner_token'))} />;
+  if (!me) return (
+    <div className="flex items-center justify-center h-64 text-muted text-sm">
+      <i className="ti ti-loader-2 animate-spin text-xl mr-2" aria-hidden="true" />Загружаем...
+    </div>
+  );
+
+  const p = me.provider;
+  const newLeadsCount = leads.filter(l => l.status === 'new').length;
+
+  const navItems: { id: Section; label: string; icon: string; badge?: number }[] = [
+    { id: 'overview', label: 'Обзор', icon: 'ti-layout-dashboard' },
+    { id: 'page', label: 'Моя страница', icon: 'ti-file-pencil' },
+    { id: 'leads', label: 'Заявки', icon: 'ti-mail', badge: newLeadsCount },
+    { id: 'reviews', label: 'Отзывы', icon: 'ti-star' },
+    { id: 'settings', label: 'Настройки', icon: 'ti-settings' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-paper-50">
+      {/* Мобильный хедер */}
+      <div className="md:hidden bg-white border-b border-line px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+        <div>
+          <div className="text-sm font-semibold text-ink-900">{p?.name || me.name}</div>
+          <div className="text-xs text-muted">{p?.category?.name}</div>
+        </div>
+        <button onClick={() => setMobileMenuOpen(v => !v)} className="p-2 text-muted hover:text-ink-900">
+          <i className={`ti ${mobileMenuOpen ? 'ti-x' : 'ti-menu-2'} text-xl`} aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* Мобильное меню */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-line px-4 py-2 space-y-1">
+          {navItems.map(item => (
+            <button key={item.id} onClick={() => { setSection(item.id); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-colors ${section === item.id ? 'bg-volt-600/10 text-volt-600 font-semibold' : 'text-muted hover:bg-paper-50'}`}>
+              <i className={`ti ${item.icon} text-base`} aria-hidden="true" />
+              {item.label}
+              {item.badge ? <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{item.badge}</span> : null}
+            </button>
+          ))}
+          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50">
+            <i className="ti ti-logout text-base" aria-hidden="true" />Выйти
+          </button>
+        </div>
+      )}
+
+      <div className="max-w-[1120px] mx-auto px-4 md:px-6 py-6 flex gap-6">
+        {/* Боковое меню (десктоп) */}
+        <aside className="hidden md:flex flex-col w-52 shrink-0">
+          <div className="bg-white border border-line rounded-xl overflow-hidden sticky top-6">
+            {/* Профиль */}
+            <div className="p-4 border-b border-line">
+              <div className="w-10 h-10 rounded-xl bg-volt-600/10 flex items-center justify-center mb-3">
+                {p?.logoUrl
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={p.logoUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+                  : <i className="ti ti-building-store text-xl text-volt-600" aria-hidden="true" />}
+              </div>
+              <div className="text-sm font-semibold text-ink-900 leading-tight">{p?.name || me.name}</div>
+              <div className="text-xs text-muted mt-0.5">{p?.category?.name}</div>
+            </div>
+
+            {/* Навигация */}
+            <nav className="p-2">
+              {navItems.map(item => (
+                <button key={item.id} onClick={() => setSection(item.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors text-left mb-0.5 ${section === item.id ? 'bg-volt-600/10 text-volt-600 font-semibold' : 'text-muted hover:bg-paper-50 hover:text-ink-900'}`}>
+                  <i className={`ti ${item.icon} text-base`} aria-hidden="true" />
+                  {item.label}
+                  {item.badge ? <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{item.badge}</span> : null}
+                </button>
+              ))}
+              <div className="border-t border-line mt-2 pt-2">
+                <button onClick={logout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors">
+                  <i className="ti ti-logout text-base" aria-hidden="true" />Выйти
+                </button>
+              </div>
+            </nav>
+          </div>
+        </aside>
+
+        {/* Основной контент */}
+        <main className="flex-1 min-w-0">
+          {/* Шапка раздела */}
+          <div className="flex items-center justify-between mb-5">
+            <h1 className="text-lg font-bold text-ink-900">
+              {navItems.find(n => n.id === section)?.label}
+            </h1>
+            <div className="flex items-center gap-2">
+              {p && (
+                <>
+                  {p.slug && (
+                    <a href={`/services/${p.slug}`} target="_blank"
+                      className="hidden sm:flex items-center gap-1.5 text-xs text-muted border border-line px-3 py-2 rounded-lg hover:border-graphite-900/30 hover:text-ink-900 transition-colors">
+                      <i className="ti ti-external-link text-sm" aria-hidden="true" />
+                      Просмотр
+                    </a>
+                  )}
+                  <button onClick={togglePublish}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${p.isPublished ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100' : 'bg-paper-50 border-line text-muted hover:border-graphite-900/30'}`}>
+                    <i className={`ti ${p.isPublished ? 'ti-circle-check' : 'ti-circle'} text-sm`} aria-hidden="true" />
+                    {p.isPublished ? 'Опубликовано' : 'Скрыто'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Нет провайдера */}
+          {!p ? (
+            <div className="py-20 text-center bg-white border border-line rounded-xl">
+              <i className="ti ti-building-store text-4xl text-muted block mb-3 opacity-30" aria-hidden="true" />
+              <h2 className="text-base font-semibold text-ink-900 mb-2">Страница ещё не создана</h2>
+              <p className="text-sm text-muted mb-4">Администратор создаст страницу после одобрения заявки</p>
+              <a href="mailto:partners@proev.ru" className="text-sm text-volt-600 underline underline-offset-2">partners@proev.ru</a>
+            </div>
+          ) : (
+            <>
+              {section === 'overview' && <Overview provider={p} leads={leads} reviews={reviews} />}
+              {section === 'page' && <PageEditor provider={p} evModels={evModels} onSave={save} saving={saving} saved={saved} />}
+              {section === 'leads' && <LeadsSection leads={leads} />}
+              {section === 'reviews' && <ReviewsSection reviews={reviews} provider={p} />}
+              {section === 'settings' && <SettingsSection me={me} provider={p} onSave={save} saving={saving} />}
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
