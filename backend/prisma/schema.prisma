@@ -189,7 +189,7 @@ model Lead {
   status       LeadStatus @default(new)
   partnerNote  String?
   nextFollowUp DateTime?
-  updatedAt    DateTime   @updatedAt
+  updatedAt    DateTime   @default(now()) @updatedAt
   history      LeadHistory[]
   createdAt    DateTime   @default(now())
 }
