@@ -97,7 +97,99 @@ async function mountAdmin(app: any) {
         },
         actions: { delete: { isAccessible: isAdmin } },
       }),
-      // ── Заявки на партнёрство ──────────────────────────────────────────────
+      // ── Аккаунты партнёров ────────────────────────────────────────────────
+      {
+        resource: { model: getModelByName('User'), client: prisma },
+        options: {
+          navigation: { name: 'Партнёры' },
+          id: 'PartnerAccounts',
+          listProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
+          showProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
+          editProperties: ['name', 'email', 'phone'],
+          filterProperties: ['role'],
+          properties: {
+            role: {
+              availableValues: [
+                { value: 'user',      label: 'Пользователь' },
+                { value: 'partner',   label: 'Партнёр' },
+                { value: 'moderator', label: 'Модератор' },
+                { value: 'admin',     label: 'Администратор' },
+              ],
+            },
+            passwordHash: { isVisible: false },
+          },
+          actions: {
+            new: { isAccessible: isAdmin },
+            delete: { isAccessible: isAdmin },
+            list: {
+              isAccessible: isAdmin,
+              // Показываем только партнёров — не всех пользователей
+              after: async (response: any) => {
+                if (response.records) {
+                  response.records = response.records.filter(
+                    (r: any) => r.params?.role === 'partner',
+                  );
+                }
+                return response;
+              },
+            },
+            // ── Сменить пароль ────────────────────────────────────────────
+            resetPassword: {
+              actionType: 'record',
+              label: '🔑 Новый пароль',
+              icon: 'Key',
+              isVisible: (ctx: any) => ctx.record?.params?.role === 'partner',
+              handler: async (request: any, response: any, context: any) => {
+                const { record, currentAdmin } = context;
+                const userId = record.params.id;
+
+                const newPassword = Math.random().toString(36).slice(2, 10);
+                const passwordHash = await bcrypt.hash(newPassword, 12);
+
+                await prisma.user.update({
+                  where: { id: userId },
+                  data: { passwordHash },
+                });
+
+                const email = record.params.email;
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: `Новый пароль для ${email}: ${newPassword} — скопируйте и отправьте партнёру!`,
+                    type: 'success',
+                  },
+                };
+              },
+            },
+            // ── Заблокировать / разблокировать ────────────────────────────
+            toggleBlock: {
+              actionType: 'record',
+              label: '🚫 Заблокировать',
+              icon: 'Ban',
+              isVisible: (ctx: any) => ctx.record?.params?.role === 'partner',
+              handler: async (request: any, response: any, context: any) => {
+                const { record, currentAdmin } = context;
+                // Меняем роль на 'blocked' или обратно на 'partner'
+                const current = record.params.role;
+                const newRole = current === 'blocked' ? 'partner' : 'blocked';
+                await prisma.user.update({
+                  where: { id: record.params.id },
+                  data: { role: newRole as any },
+                });
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: newRole === 'blocked'
+                      ? 'Партнёр заблокирован — вход в кабинет закрыт'
+                      : 'Партнёр разблокирован',
+                    type: newRole === 'blocked' ? 'info' : 'success',
+                  },
+                };
+              },
+            },
+          },
+        },
+      },
       {
         resource: { model: getModelByName('PartnerApplication'), client: prisma },
         options: {

@@ -124,6 +124,22 @@ export class PartnersController {
     return { models: EV_MODELS };
   }
 
+  @Patch('change-password')
+  async changePassword(
+    @Headers('x-partner-token') token: string,
+    @Body() dto: { currentPassword: string; newPassword: string },
+  ) {
+    const user = await this.resolvePartner(token);
+    const ok = await bcrypt.compare(dto.currentPassword, user.passwordHash || '');
+    if (!ok) throw new UnauthorizedException('Текущий пароль неверный');
+    if (!dto.newPassword || dto.newPassword.length < 6) {
+      throw new BadRequestException('Новый пароль должен быть не менее 6 символов');
+    }
+    const hash = await bcrypt.hash(dto.newPassword, 12);
+    await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: hash } });
+    return { ok: true };
+  }
+
   @Patch('provider')
   async updateProvider(
     @Headers('x-partner-token') token: string,

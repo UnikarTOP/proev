@@ -419,36 +419,84 @@ function ReviewsSection({ reviews, provider }: { reviews: Review[]; provider: Pr
   );
 }
 
-function SettingsSection({ me, provider, onSave, saving }: { me: Me; provider: Provider; onSave: (d: any) => void; saving: boolean }) {
+function SettingsSection({ me, provider, token, onSave, saving }: { me: Me; provider: Provider; token: string; onSave: (d: any) => void; saving: boolean }) {
   const [pwd, setPwd] = useState({ old: '', new1: '', new2: '' });
+  const [pwdMsg, setPwdMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [pwdLoading, setPwdLoading] = useState(false);
   const inp = 'w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600';
+  const api = process.env.NEXT_PUBLIC_API_URL || '/api';
+
+  const changePassword = async () => {
+    if (!pwd.old || !pwd.new1 || !pwd.new2) { setPwdMsg({ text: 'Заполните все поля', ok: false }); return; }
+    if (pwd.new1 !== pwd.new2) { setPwdMsg({ text: 'Новые пароли не совпадают', ok: false }); return; }
+    if (pwd.new1.length < 6) { setPwdMsg({ text: 'Минимум 6 символов', ok: false }); return; }
+    setPwdLoading(true);
+    try {
+      const res = await fetch(`${api}/partners/change-password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Partner-Token': token },
+        body: JSON.stringify({ currentPassword: pwd.old, newPassword: pwd.new1 }),
+      });
+      if (res.ok) {
+        setPwdMsg({ text: 'Пароль изменён', ok: true });
+        setPwd({ old: '', new1: '', new2: '' });
+      } else {
+        const err = await res.json();
+        setPwdMsg({ text: err.message || 'Ошибка', ok: false });
+      }
+    } catch { setPwdMsg({ text: 'Ошибка соединения', ok: false }); }
+    setPwdLoading(false);
+    setTimeout(() => setPwdMsg(null), 3000);
+  };
 
   return (
     <div className="space-y-4 max-w-lg">
       <Card title="Аккаунт" icon="ti-user">
         <div className="space-y-3">
-          <Field label="Email (логин)"><input value={me.email} readOnly className={`${inp} bg-paper-50 text-muted`} /></Field>
-          <Field label="Имя / название"><input defaultValue={me.name} className={inp} /></Field>
+          <Field label="Email (логин)">
+            <input value={me.email} readOnly className={`${inp} bg-paper-50 text-muted cursor-not-allowed`} />
+            <p className="text-xs text-muted mt-1">Для смены email обратитесь на <a href="mailto:partners@proev.ru" className="text-volt-600 underline underline-offset-2">partners@proev.ru</a></p>
+          </Field>
         </div>
       </Card>
 
       <Card title="Сменить пароль" icon="ti-lock">
         <div className="space-y-3">
-          <Field label="Текущий пароль"><input type="password" value={pwd.old} onChange={e => setPwd(p => ({...p, old: e.target.value}))} className={inp} /></Field>
-          <Field label="Новый пароль"><input type="password" value={pwd.new1} onChange={e => setPwd(p => ({...p, new1: e.target.value}))} className={inp} /></Field>
-          <Field label="Повторите пароль"><input type="password" value={pwd.new2} onChange={e => setPwd(p => ({...p, new2: e.target.value}))} className={inp} /></Field>
-          <button className="w-full py-2.5 bg-ink-900 text-white rounded-lg text-sm font-semibold">Изменить пароль</button>
+          <Field label="Текущий пароль">
+            <input type="password" value={pwd.old} onChange={e => setPwd(p => ({...p, old: e.target.value}))}
+              placeholder="Текущий пароль" className={inp} />
+          </Field>
+          <Field label="Новый пароль">
+            <input type="password" value={pwd.new1} onChange={e => setPwd(p => ({...p, new1: e.target.value}))}
+              placeholder="Минимум 6 символов" className={inp} />
+          </Field>
+          <Field label="Повторите новый пароль">
+            <input type="password" value={pwd.new2} onChange={e => setPwd(p => ({...p, new2: e.target.value}))}
+              onKeyDown={e => e.key === 'Enter' && changePassword()}
+              placeholder="Повторите новый пароль" className={inp} />
+          </Field>
+          {pwdMsg && (
+            <div className={`text-xs flex items-center gap-1.5 px-3 py-2 rounded-lg ${pwdMsg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              <i className={`ti ${pwdMsg.ok ? 'ti-check' : 'ti-alert-circle'} text-sm`} aria-hidden="true"/>
+              {pwdMsg.text}
+            </div>
+          )}
+          <button onClick={changePassword} disabled={pwdLoading}
+            className="w-full py-2.5 bg-ink-900 text-white rounded-lg text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+            {pwdLoading && <i className="ti ti-loader-2 animate-spin text-sm" aria-hidden="true"/>}
+            {pwdLoading ? 'Меняем...' : 'Изменить пароль'}
+          </button>
         </div>
       </Card>
 
       <Card title="Тариф" icon="ti-crown">
         <div className="flex items-start gap-3">
           <div className={`px-3 py-1 rounded-full text-xs font-semibold ${provider.isPaidPlacement ? 'bg-amber-100 text-amber-800' : 'bg-paper-50 text-muted border border-line'}`}>
-            {provider.isPaidPlacement ? 'Партнёр' : 'Базовый'}
+            {provider.isPaidPlacement ? '⭐ Партнёр proev.ru' : 'Базовый'}
           </div>
           {!provider.isPaidPlacement && (
-            <p className="text-sm text-muted">Обновитесь до тарифа Партнёр — ваша карточка будет показываться первой в каталоге и выделяться синей рамкой.
-              <a href="mailto:partners@proev.ru" className="ml-1 text-volt-600 underline underline-offset-2">Написать нам</a>
+            <p className="text-sm text-muted">Обновитесь до тарифа Партнёр — карточка показывается первой и выделяется синей рамкой.{' '}
+              <a href="mailto:partners@proev.ru" className="text-volt-600 underline underline-offset-2">Написать нам</a>
             </p>
           )}
         </div>
@@ -716,7 +764,7 @@ export default function CabinetPage() {
               {section === 'page' && <PageEditor provider={p} evModels={evModels} onSave={save} saving={saving} saved={saved} />}
               {section === 'leads' && <LeadsSection leads={leads} />}
               {section === 'reviews' && <ReviewsSection reviews={reviews} provider={p} />}
-              {section === 'settings' && <SettingsSection me={me} provider={p} onSave={save} saving={saving} />}
+              {section === 'settings' && <SettingsSection me={me} provider={p} token={token} onSave={save} saving={saving} />}
             </>
           )}
         </main>
