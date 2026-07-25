@@ -30,6 +30,8 @@ enum ChargingSpeed {
 enum LeadStatus {
   new
   contacted
+  qualified
+  proposal
   converted
   rejected
 }
@@ -184,8 +186,22 @@ model Lead {
   name       String
   phone      String
   message    String?
-  status     LeadStatus @default(new)
-  createdAt  DateTime   @default(now())
+  status       LeadStatus @default(new)
+  partnerNote  String?
+  nextFollowUp DateTime?
+  updatedAt    DateTime   @updatedAt
+  history      LeadHistory[]
+  createdAt    DateTime   @default(now())
+}
+
+model LeadHistory {
+  id         String      @id @default(uuid())
+  leadId     String
+  lead       Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStatus LeadStatus?
+  toStatus   LeadStatus
+  note       String?
+  createdAt  DateTime    @default(now())
 }
 
 model Article {

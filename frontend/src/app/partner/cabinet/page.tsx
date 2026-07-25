@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import CrmLeads from '@/components/CrmLeads';
 
 interface Provider {
   id: string; name: string; slug: string; tagline?: string;
@@ -706,7 +707,7 @@ export default function CabinetPage() {
   const navItems: { id: Section; label: string; icon: string; badge?: number }[] = [
     { id: 'overview', label: 'Обзор', icon: 'ti-layout-dashboard' },
     { id: 'page', label: 'Моя страница', icon: 'ti-file-pencil' },
-    { id: 'leads', label: 'Заявки', icon: 'ti-mail', badge: newLeadsCount },
+    { id: 'leads', label: 'Заявки / CRM', icon: 'ti-mail', badge: newLeadsCount },
     { id: 'reviews', label: 'Отзывы', icon: 'ti-star' },
     { id: 'settings', label: 'Настройки', icon: 'ti-settings' },
   ];
@@ -815,7 +816,9 @@ export default function CabinetPage() {
             <>
               {section === 'overview' && <Overview provider={p} leads={leads} reviews={reviews} />}
               {section === 'page' && <PageEditor provider={p} evModels={evModels} onSave={save} saving={saving} saved={saved} token={token} />}
-              {section === 'leads' && <LeadsSection leads={leads} />}
+              {section === 'leads' && me.provider && token && (
+                <CrmLeads providerId={me.provider.id} token={token} />
+              )}
               {section === 'reviews' && <ReviewsSection reviews={reviews} provider={p} />}
               {section === 'settings' && <SettingsSection me={me} provider={p} token={token} onSave={save} saving={saving} />}
             </>
