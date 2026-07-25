@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PartnersController } from './partners.controller';
+import { IntegrationsModule } from '../integrations/integrations.module';
 
-@Module({ controllers: [PartnersController] })
+@Module({
+  imports: [IntegrationsModule],
+  controllers: [PartnersController],
+})
 export class PartnersModule {}

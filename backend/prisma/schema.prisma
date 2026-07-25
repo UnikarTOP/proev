@@ -52,7 +52,10 @@ model User {
   name         String?
   avatarUrl    String?
   role         UserRole @default(user)
-  passwordHash String?  // только для admin/moderator — вход в /admin. Обычные пользователи сайта пока без пароля.
+  passwordHash String?
+  // Сброс пароля по email
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
   createdAt    DateTime @default(now())
 
   stations         ChargingStation[] @relation("AddedStations")

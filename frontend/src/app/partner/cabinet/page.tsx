@@ -575,10 +575,12 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             className="w-full py-3 bg-ink-900 text-white rounded-xl text-sm font-semibold hover:bg-ink-700 transition-colors disabled:opacity-50">
             {loading ? 'Входим...' : 'Войти'}
           </button>
-          <p className="text-center text-xs text-muted">
-            Нет аккаунта?{' '}
-            <a href="/partner" className="text-volt-600 underline underline-offset-2">Подать заявку</a>
-          </p>
+          <div className="flex items-center justify-between">
+            <a href="/partner" className="text-xs text-muted underline underline-offset-2 hover:text-ink-900">
+              Подать заявку
+            </a>
+            <ForgotPasswordInline email={form.email} />
+          </div>
         </div>
       </div>
     </div>
@@ -771,5 +773,43 @@ export default function CabinetPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Компонент "Забыли пароль?" встроенный в форму входа
+function ForgotPasswordInline({ email }: { email: string }) {
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const api = process.env.NEXT_PUBLIC_API_URL || '/api';
+
+  const request = async () => {
+    const emailToUse = email.trim();
+    if (!emailToUse) {
+      alert('Введите email в поле выше, затем нажмите "Забыли пароль?"');
+      return;
+    }
+    setLoading(true);
+    try {
+      await fetch(`${api}/partners/request-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToUse }),
+      });
+      setSent(true);
+    } catch {}
+    setLoading(false);
+  };
+
+  if (sent) return (
+    <span className="text-xs text-green-600 flex items-center gap-1">
+      <i className="ti ti-check text-xs" aria-hidden="true"/>Письмо отправлено
+    </span>
+  );
+
+  return (
+    <button onClick={request} disabled={loading}
+      className="text-xs text-volt-600 underline underline-offset-2 hover:opacity-80 disabled:opacity-50 transition-opacity">
+      {loading ? 'Отправляем...' : 'Забыли пароль?'}
+    </button>
   );
 }
