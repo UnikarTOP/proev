@@ -398,17 +398,95 @@ async function mountAdmin(app: any) {
           },
         },
       },
-      buildResource('User', {
-        navigation: { name: 'Пользователи' },
-        properties: { passwordHash: { isVisible: false } },
-        actions: {
-          list: { isAccessible: isAdmin },
-          show: { isAccessible: isAdmin },
-          edit: { isAccessible: isAdmin },
-          new: { isAccessible: isAdmin },
-          delete: { isAccessible: isAdmin },
+      // ── Управление пользователями ─────────────────────────────────────────
+      {
+        resource: { model: getModelByName('User'), client: prisma },
+        options: {
+          navigation: { name: 'Пользователи' },
+          listProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
+          showProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
+          filterProperties: ['role'],
+          editProperties: ['name', 'email', 'role', 'phone'],
+          properties: {
+            passwordHash: { isVisible: false },
+            role: {
+              availableValues: [
+                { value: 'user',      label: 'Пользователь' },
+                { value: 'partner',   label: 'Партнёр' },
+                { value: 'moderator', label: 'Модератор' },
+                { value: 'admin',     label: 'Администратор' },
+              ],
+            },
+          },
+          actions: {
+            list:       { isAccessible: isAdmin },
+            show:       { isAccessible: isAdmin },
+            new:        { isAccessible: isAdmin },
+            delete:     { isAccessible: isAdmin },
+            bulkDelete: { isAccessible: isAdmin },
+            edit: {
+              isAccessible: isAdmin,
+              // Стандартное редактирование — имя, email, телефон, роль
+            },
+            // ── Сменить пароль ──────────────────────────────────────────────
+            changePassword: {
+              actionType: 'record',
+              label: '🔑 Сменить пароль',
+              icon: 'Key',
+              isVisible: isAdmin,
+              handler: async (request: any, response: any, context: any) => {
+                const { record, currentAdmin } = context;
+                const userId = record.params.id;
+
+                // Генерируем новый случайный пароль
+                const newPassword = Math.random().toString(36).slice(2, 10) +
+                                   Math.random().toString(36).slice(2, 6).toUpperCase();
+                const passwordHash = await bcrypt.hash(newPassword, 12);
+
+                await prisma.user.update({
+                  where: { id: userId },
+                  data: { passwordHash },
+                });
+
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: `Новый пароль: ${newPassword} — скопируйте и передайте партнёру. Он показывается только сейчас.`,
+                    type: 'success',
+                  },
+                };
+              },
+            },
+            // ── Установить конкретный пароль (из формы) ─────────────────────
+            setPassword: {
+              actionType: 'record',
+              label: '✏️ Задать пароль',
+              icon: 'Edit',
+              isVisible: isAdmin,
+              handler: async (request: any, response: any, context: any) => {
+                const { record, currentAdmin, h } = context;
+                // Пароль берём из query-параметра или payload
+                const newPassword = request.query?.password || request.payload?.password;
+                if (!newPassword || newPassword.length < 6) {
+                  return {
+                    record: record.toJSON(currentAdmin),
+                    notice: { message: 'Укажите пароль в URL: ?password=НовыйПароль (минимум 6 символов)', type: 'error' },
+                  };
+                }
+                const passwordHash = await bcrypt.hash(newPassword, 12);
+                await prisma.user.update({
+                  where: { id: record.params.id },
+                  data: { passwordHash },
+                });
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: { message: `Пароль установлен: ${newPassword}`, type: 'success' },
+                };
+              },
+            },
+          },
         },
-      }),
+      },
     ],
   });
 

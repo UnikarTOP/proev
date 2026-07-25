@@ -54,8 +54,15 @@ export default function PartnerRegisterPage() {
     <div className="max-w-[640px] mx-auto px-4 md:px-6 py-8 md:py-12">
       {/* Заголовок */}
       <div className="mb-8">
-        <span className="text-xs font-semibold text-volt-600 uppercase tracking-widest">Партнёрам</span>
-        <h1 className="text-3xl font-bold text-ink-900 mt-2 mb-3">Разместите свой сервис на proev.ru</h1>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold text-volt-600 uppercase tracking-widest">Партнёрам</span>
+          <a href="/partner/cabinet"
+            className="flex items-center gap-2 text-sm font-semibold bg-ink-900 text-white px-4 py-2 rounded-xl hover:bg-ink-700 transition-colors">
+            <i className="ti ti-layout-dashboard text-sm" aria-hidden="true" />
+            Войти в кабинет
+          </a>
+        </div>
+        <h1 className="text-3xl font-bold text-ink-900 mb-3">Разместите свой сервис на proev.ru</h1>
         <p className="text-muted text-sm leading-relaxed">
           Заполните заявку — мы проверим её в течение 1–2 рабочих дней и пришлём данные для входа в личный кабинет, где вы самостоятельно создадите страницу своего сервиса.
         </p>
