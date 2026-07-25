@@ -59,7 +59,7 @@ export class ProviderBlogController {
   async publicPosts(@Param('providerId') providerId: string) {
     return this.prisma.providerPost.findMany({
       where: { providerId, isPublished: true },
-      select: { id: true, title: true, slug: true, excerpt: true, coverUrl: true, publishedAt: true, createdAt: true },
+      select: { id: true, title: true, slug: true, excerpt: true, content: true, coverUrl: true, publishedAt: true, createdAt: true },
       orderBy: { publishedAt: 'desc' },
     });
   }
