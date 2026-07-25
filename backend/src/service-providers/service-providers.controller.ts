@@ -33,6 +33,12 @@ export class ServiceProvidersController {
     return this.service.findOne(id);
   }
 
+  // Получить отзывы партнёра (для кабинета)
+  @Get(':id/reviews')
+  getReviews(@Param('id') id: string) {
+    return this.service.getReviews(id);
+  }
+
   // Добавить отзыв на партнёра
   @Post(':id/reviews')
   addReview(@Param('id') id: string, @Body() dto: CreateReviewDto) {

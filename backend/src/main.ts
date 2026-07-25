@@ -1,8 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import * as bcrypt from 'bcryptjs';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
+
+const UPLOADS_DIR = join(process.cwd(), 'uploads');
+if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // TypeScript при компиляции в CommonJS переписывает динамический import()
 // в require() под капотом — а require() не может загрузить чистый ESM-пакет
@@ -15,9 +21,10 @@ const dynamicImport = new Function('specifier', 'return import(specifier)') as (
 ) => Promise<any>;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useStaticAssets(UPLOADS_DIR, { prefix: '/uploads' });
 
   await mountAdmin(app);
 

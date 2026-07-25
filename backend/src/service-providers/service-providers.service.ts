@@ -51,6 +51,14 @@ export class ServiceProvidersService {
   }
 
   // Добавляем отзыв и пересчитываем средний рейтинг
+  async getReviews(providerId: string) {
+    return this.prisma.providerReview.findMany({
+      where: { providerId },
+      include: { author: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async addReview(providerId: string, data: { rating: number; text?: string; authorId?: string }) {
     const review = await this.prisma.providerReview.create({
       data: {

@@ -165,21 +165,58 @@ function Overview({ provider, leads, reviews }: { provider: Provider; leads: Lea
   );
 }
 
-function PageEditor({ provider, evModels, onSave, saving, saved }: {
+function PageEditor({ provider, evModels, onSave, saving, saved, token }: {
   provider: Provider; evModels: string[];
   onSave: (data: Partial<Provider>) => void;
-  saving: boolean; saved: boolean;
+  saving: boolean; saved: boolean; token: string;
 }) {
   const [form, setForm] = useState<Partial<Provider>>(provider);
   const [newService, setNewService] = useState('');
-  const [newPhoto, setNewPhoto] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [photoError, setPhotoError] = useState('');
 
+  const API = process.env.NEXT_PUBLIC_API_URL || '/api';
   const upd = (k: keyof Provider, v: any) => setForm(f => ({ ...f, [k]: v }));
   const addService = () => { if (newService.trim()) { upd('services', [...(form.services || []), newService.trim()]); setNewService(''); } };
   const removeService = (s: string) => upd('services', (form.services || []).filter(x => x !== s));
   const toggleBrand = (b: string) => upd('brands', (form.brands || []).includes(b) ? (form.brands || []).filter(x => x !== b) : [...(form.brands || []), b]);
-  const addPhoto = () => { if (newPhoto.trim()) { upd('photos', [...(form.photos || []), newPhoto.trim()]); setNewPhoto(''); } };
   const removePhoto = (u: string) => upd('photos', (form.photos || []).filter(x => x !== u));
+
+  const uploadFile = async (file: File): Promise<string | null> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API}/upload/photo`, {
+      method: 'POST',
+      headers: { 'X-Partner-Token': token },
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Ошибка загрузки: ${res.status}`);
+    }
+    const data = await res.json();
+    return data.url;
+  };
+
+  const uploadPhoto = async (file: File) => {
+    if ((form.photos || []).length >= 6) return;
+    setUploadingPhoto(true); setPhotoError('');
+    try {
+      const url = await uploadFile(file);
+      if (url) upd('photos', [...(form.photos || []), url]);
+    } catch (e: any) { setPhotoError(e.message); }
+    setUploadingPhoto(false);
+  };
+
+  const uploadLogo = async (file: File) => {
+    setUploadingLogo(true); setPhotoError('');
+    try {
+      const url = await uploadFile(file);
+      if (url) upd('logoUrl', url);
+    } catch (e: any) { setPhotoError(e.message); }
+    setUploadingLogo(false);
+  };
 
   const inp = 'w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:border-volt-600 bg-white transition-colors';
 
@@ -269,36 +306,46 @@ function PageEditor({ provider, evModels, onSave, saving, saved }: {
             </div>
           ))}
           {(form.photos || []).length < 6 && (
-            <div className="aspect-video rounded-lg border-2 border-dashed border-line flex items-center justify-center text-muted">
-              <i className="ti ti-plus text-xl" aria-hidden="true" />
-            </div>
+            <label className="aspect-video rounded-lg border-2 border-dashed border-line flex flex-col items-center justify-center text-muted cursor-pointer hover:border-volt-600 hover:text-volt-600 transition-colors">
+              {uploadingPhoto
+                ? <i className="ti ti-loader-2 text-xl animate-spin" aria-hidden="true" />
+                : <><i className="ti ti-upload text-xl" aria-hidden="true" /><span className="text-[10px] mt-1">Загрузить</span></>
+              }
+              <input type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ''; }} />
+            </label>
           )}
         </div>
-        <div className="flex gap-2">
-          <input value={newPhoto} onChange={e => setNewPhoto(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addPhoto()}
-            placeholder="Вставьте URL фотографии..."
-            className={`flex-1 ${inp}`} />
-          <button onClick={addPhoto} className="px-3 py-2 bg-ink-900 text-white rounded-lg text-sm hover:bg-ink-700 transition-colors">
-            <i className="ti ti-plus" aria-hidden="true" />
-          </button>
-        </div>
-        <p className="text-[11px] text-muted mt-2">До 6 фото. Рекомендуемый размер 800×600 пикс. Вставьте прямую ссылку на изображение.</p>
+        <p className="text-[11px] text-muted">До 6 фото · JPG, PNG, WebP · до 5 МБ · нажмите на плюс для загрузки</p>
+        {photoError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><i className="ti ti-alert-circle" aria-hidden="true"/>{photoError}</p>}
       </Card>
 
       {/* Логотип */}
       <Card title="Логотип" icon="ti-brand-abstract">
         <div className="flex gap-4 items-start">
-          <div className="w-16 h-16 rounded-xl border border-line bg-paper-50 flex items-center justify-center overflow-hidden shrink-0">
+          <label className="w-16 h-16 rounded-xl border border-line bg-paper-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-volt-600 transition-colors group relative">
             {form.logoUrl
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={form.logoUrl} alt="Логотип" className="w-full h-full object-cover" />
-              : <i className="ti ti-photo text-2xl text-muted" aria-hidden="true" />}
+              : <i className="ti ti-upload text-xl text-muted group-hover:text-volt-600 transition-colors" aria-hidden="true" />
+            }
+            {uploadingLogo && (
+              <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                <i className="ti ti-loader-2 animate-spin text-muted" aria-hidden="true" />
+              </div>
+            )}
+            <input type="file" accept="image/*" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ''; }} />
+          </label>
+          <div className="flex-1">
+            <p className="text-xs text-muted leading-relaxed">Нажмите на область слева чтобы загрузить логотип.<br/>Рекомендуемый размер: 200×200 пикс., квадратный формат.</p>
+            {form.logoUrl && (
+              <button onClick={() => upd('logoUrl', '')}
+                className="mt-2 text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                <i className="ti ti-trash text-xs" aria-hidden="true"/>Удалить логотип
+              </button>
+            )}
           </div>
-          <Field label="URL логотипа" className="flex-1">
-            <input value={form.logoUrl || ''} onChange={e => upd('logoUrl', e.target.value)}
-              placeholder="https://evservice.ru/logo.png" className={inp} />
-          </Field>
         </div>
       </Card>
 
@@ -617,7 +664,10 @@ export default function CabinetPage() {
   useEffect(() => {
     if (!me?.provider) return;
     // Загружаем заявки и отзывы для провайдера
-    fetch(`${API}/service-providers/${me.provider.id}/reviews`).then(r => r.json()).then(setReviews).catch(() => {});
+    fetch(`${API}/leads/provider/${me.provider.id}`)
+      .then(r => r.json()).then(setLeads).catch(() => {});
+    fetch(`${API}/service-providers/${me.provider.id}/reviews`)
+      .then(r => r.json()).then(setReviews).catch(() => {});
   }, [me]);
 
   const save = useCallback(async (data: Partial<Provider>) => {
@@ -764,7 +814,7 @@ export default function CabinetPage() {
           ) : (
             <>
               {section === 'overview' && <Overview provider={p} leads={leads} reviews={reviews} />}
-              {section === 'page' && <PageEditor provider={p} evModels={evModels} onSave={save} saving={saving} saved={saved} />}
+              {section === 'page' && <PageEditor provider={p} evModels={evModels} onSave={save} saving={saving} saved={saved} token={token} />}
               {section === 'leads' && <LeadsSection leads={leads} />}
               {section === 'reviews' && <ReviewsSection reviews={reviews} provider={p} />}
               {section === 'settings' && <SettingsSection me={me} provider={p} token={token} onSave={save} saving={saving} />}
