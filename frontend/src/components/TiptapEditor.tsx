@@ -16,7 +16,7 @@ interface Props {
   placeholder?: string;
 }
 
-function ToolBtn({ onClick, active, title, children }: {
+function Btn({ onClick, active, title, children }: {
   onClick: () => void; active?: boolean; title: string; children: React.ReactNode;
 }) {
   return (
@@ -24,39 +24,41 @@ function ToolBtn({ onClick, active, title, children }: {
       type="button"
       onMouseDown={e => { e.preventDefault(); onClick(); }}
       title={title}
-      className={`w-8 h-8 flex items-center justify-center rounded-md text-sm transition-colors ${
-        active
-          ? 'bg-ink-900 text-white'
-          : 'text-muted hover:bg-paper-50 hover:text-ink-900'
-      }`}
+      style={{
+        width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+        background: active ? '#0B1220' : 'transparent',
+        color: active ? '#fff' : '#6B7686',
+        transition: 'all 0.12s',
+      }}
+      onMouseEnter={e => { if (!active) { (e.target as HTMLElement).style.background = '#F1EFE8'; (e.target as HTMLElement).style.color = '#10192B'; } }}
+      onMouseLeave={e => { if (!active) { (e.target as HTMLElement).style.background = 'transparent'; (e.target as HTMLElement).style.color = '#6B7686'; } }}
     >
       {children}
     </button>
   );
 }
 
-export default function TiptapEditor({ content, onChange, token, placeholder = 'Начните писать статью...' }: Props) {
+function Sep() {
+  return <div style={{ width: 1, height: 20, background: '#DCE1E8', margin: '0 4px', flexShrink: 0 }} />;
+}
+
+export default function TiptapEditor({ content, onChange, token, placeholder = 'Начните писать...' }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const api = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3] },
-        bulletList: { keepMarks: true },
-        orderedList: { keepMarks: true },
-      }),
+      StarterKit.configure({ heading: { levels: [2, 3] } }),
       Underline,
-      Image.configure({ inline: false, allowBase64: false }),
+      Image.configure({ inline: false }),
       Link.configure({ openOnClick: false }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder }),
     ],
     content,
     editorProps: {
-      attributes: {
-        class: 'prose prose-sm max-w-none min-h-[320px] px-5 py-4 focus:outline-none',
-      },
+      attributes: { class: 'prose prose-sm max-w-none min-h-[280px] px-4 py-3 focus:outline-none' },
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
@@ -72,12 +74,8 @@ export default function TiptapEditor({ content, onChange, token, placeholder = '
         body: fd,
       });
       const data = await res.json();
-      if (data.url) {
-        editor.chain().focus().setImage({ src: data.url }).run();
-      }
-    } catch (e) {
-      console.error('Ошибка загрузки изображения', e);
-    }
+      if (data.url) editor.chain().focus().setImage({ src: data.url }).run();
+    } catch {}
   }, [editor, token, api]);
 
   const setLink = useCallback(() => {
@@ -85,86 +83,118 @@ export default function TiptapEditor({ content, onChange, token, placeholder = '
     const prev = editor.getAttributes('link').href;
     const url = window.prompt('URL ссылки:', prev);
     if (url === null) return;
-    if (url === '') { editor.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
+    if (!url) { editor.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
-  if (!editor) return null;
-
-  const groups = [
-    [
-      { icon: 'ti-bold', title: 'Жирный (Ctrl+B)', action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive('bold') },
-      { icon: 'ti-italic', title: 'Курсив (Ctrl+I)', action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive('italic') },
-      { icon: 'ti-underline', title: 'Подчёркнутый', action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive('underline') },
-      { icon: 'ti-strikethrough', title: 'Зачёркнутый', action: () => editor.chain().focus().toggleStrike().run(), active: editor.isActive('strike') },
-    ],
-    [
-      { icon: 'ti-h-2', title: 'Заголовок H2', action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive('heading', { level: 2 }) },
-      { icon: 'ti-h-3', title: 'Заголовок H3', action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: editor.isActive('heading', { level: 3 }) },
-    ],
-    [
-      { icon: 'ti-list', title: 'Список', action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive('bulletList') },
-      { icon: 'ti-list-numbers', title: 'Нумерованный список', action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive('orderedList') },
-      { icon: 'ti-blockquote', title: 'Цитата', action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive('blockquote') },
-      { icon: 'ti-code', title: 'Код', action: () => editor.chain().focus().toggleCode().run(), active: editor.isActive('code') },
-    ],
-    [
-      { icon: 'ti-align-left', title: 'По левому краю', action: () => editor.chain().focus().setTextAlign('left').run(), active: editor.isActive({ textAlign: 'left' }) },
-      { icon: 'ti-align-center', title: 'По центру', action: () => editor.chain().focus().setTextAlign('center').run(), active: editor.isActive({ textAlign: 'center' }) },
-      { icon: 'ti-align-right', title: 'По правому краю', action: () => editor.chain().focus().setTextAlign('right').run(), active: editor.isActive({ textAlign: 'right' }) },
-    ],
-    [
-      { icon: 'ti-link', title: 'Ссылка', action: setLink, active: editor.isActive('link') },
-      { icon: 'ti-separator', title: 'Разделитель', action: () => editor.chain().focus().setHorizontalRule().run(), active: false },
-    ],
-  ];
+  if (!editor) return (
+    <div style={{ border: '0.5px solid #DCE1E8', borderRadius: 12, height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B4B2A9', fontSize: 14 }}>
+      Загружаем редактор...
+    </div>
+  );
 
   return (
-    <div className="border border-line rounded-xl overflow-hidden bg-white">
+    <div style={{ border: '0.5px solid #DCE1E8', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
       {/* Тулбар */}
-      <div className="flex items-center gap-0.5 px-3 py-2 border-b border-line bg-paper-50 flex-wrap">
-        {groups.map((group, gi) => (
-          <div key={gi} className={`flex items-center gap-0.5 ${gi < groups.length - 1 ? 'pr-2 mr-1.5 border-r border-line' : ''}`}>
-            {group.map(btn => (
-              <ToolBtn key={btn.icon} onClick={btn.action} active={btn.active} title={btn.title}>
-                <i className={`ti ${btn.icon} text-base`} aria-hidden="true" />
-              </ToolBtn>
-            ))}
-          </div>
-        ))}
+      <div style={{
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2,
+        padding: '6px 10px', borderBottom: '0.5px solid #DCE1E8',
+        background: '#F9F8F5',
+      }}>
+        {/* Форматирование текста */}
+        <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Жирный (Ctrl+B)">
+          <strong>B</strong>
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Курсив (Ctrl+I)">
+          <em>I</em>
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Подчёркнутый">
+          <span style={{ textDecoration: 'underline' }}>U</span>
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Зачёркнутый">
+          <span style={{ textDecoration: 'line-through' }}>S</span>
+        </Btn>
 
-        {/* Кнопка загрузки картинки */}
-        <div className="ml-auto flex items-center gap-1">
-          <ToolBtn onClick={() => fileRef.current?.click()} title="Вставить изображение" active={false}>
-            <i className="ti ti-photo text-base" aria-hidden="true" />
-          </ToolBtn>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={e => {
-              const f = e.target.files?.[0];
-              if (f) uploadImage(f);
-              e.target.value = '';
-            }}
-          />
+        <Sep />
+
+        {/* Заголовки */}
+        <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Заголовок H2">
+          H2
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Заголовок H3">
+          H3
+        </Btn>
+
+        <Sep />
+
+        {/* Списки */}
+        <Btn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Список">
+          ☰
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Нумерованный список">
+          1.
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Цитата">
+          ❝
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Код">
+          {'</>'}
+        </Btn>
+
+        <Sep />
+
+        {/* Выравнивание */}
+        <Btn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="По левому краю">
+          ≡
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="По центру">
+          ≡
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="По правому краю">
+          ≡
+        </Btn>
+
+        <Sep />
+
+        {/* Ссылка и разделитель */}
+        <Btn onClick={setLink} active={editor.isActive('link')} title="Вставить ссылку">
+          🔗
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} active={false} title="Горизонтальный разделитель">
+          —
+        </Btn>
+
+        {/* Отмена/повтор */}
+        <Sep />
+        <Btn onClick={() => editor.chain().focus().undo().run()} active={false} title="Отменить (Ctrl+Z)">
+          ↩
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().redo().run()} active={false} title="Повторить (Ctrl+Y)">
+          ↪
+        </Btn>
+
+        {/* Загрузка картинки — справа */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Btn onClick={() => fileRef.current?.click()} active={false} title="Вставить изображение">
+            🖼
+          </Btn>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f); e.target.value = ''; }} />
         </div>
       </div>
 
-      {/* Область редактирования */}
+      {/* Редактор */}
       <EditorContent editor={editor} />
 
-      {/* Статус */}
-      <div className="px-5 py-2 border-t border-line bg-paper-50 flex items-center justify-between">
-        <span className="text-xs text-muted">
-          {editor.storage.characterCount?.characters?.() ?? 0} символов
+      {/* Подвал */}
+      <div style={{
+        padding: '6px 16px', borderTop: '0.5px solid #DCE1E8', background: '#F9F8F5',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <span style={{ fontSize: 11, color: '#B4B2A9' }}>Ctrl+B жирный · Ctrl+I курсив · Ctrl+Z отмена</span>
+        <span style={{ fontSize: 11, color: '#B4B2A9' }}>
+          {editor.getText().length} символов
         </span>
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <span>Ctrl+B жирный</span>
-          <span>·</span>
-          <span>Ctrl+Z отмена</span>
-        </div>
       </div>
     </div>
   );
