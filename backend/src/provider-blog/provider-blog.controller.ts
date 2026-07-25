@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete,
   Param, Body, Headers, UnauthorizedException, NotFoundException,
 } from '@nestjs/common';
-import { IsBoolean, IsOptional, IsString, MinLength, Transform } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 
 class CreatePostDto {
@@ -10,7 +10,7 @@ class CreatePostDto {
   @IsOptional() @IsString() excerpt?: string;
   @IsOptional() @IsString() content?: string;
   @IsOptional() @IsString() coverUrl?: string;
-  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() isPublished?: boolean;
+  @IsOptional() @IsBoolean() isPublished?: boolean;
 }
 
 class UpdatePostDto {
@@ -18,7 +18,7 @@ class UpdatePostDto {
   @IsOptional() @IsString() excerpt?: string;
   @IsOptional() @IsString() content?: string;
   @IsOptional() @IsString() coverUrl?: string;
-  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() isPublished?: boolean;
+  @IsOptional() @IsBoolean() isPublished?: boolean;
 }
 
 function slugify(text: string): string {
