@@ -161,8 +161,27 @@ model ServiceProvider {
 
   leads          Lead[]
   reviews        ProviderReview[]
+  posts          ProviderPost[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+}
+
+// Блог партнёра — статьи которые он пишет сам из кабинета
+model ProviderPost {
+  id          String          @id @default(uuid())
+  providerId  String
+  provider    ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String          // уникален в рамках провайдера
+  excerpt     String?         // краткое описание (для карточки)
+  content     String          // HTML от Tiptap
+  coverUrl    String?         // обложка
+  isPublished Boolean         @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([providerId, slug])
 }
 
 // Отзывы на партнёра — от пользователей proev.ru после заявки

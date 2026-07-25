@@ -459,6 +459,9 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
             </div>
           )}
 
+          {/* Блог партнёра */}
+          <ProviderBlogSection providerId={provider.id} />
+
           {/* Отзывы */}
           {provider.reviews.length > 0 && (
             <div className="bg-white border border-line rounded-xl p-5">
@@ -562,6 +565,75 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
             <LeadForm provider={provider} />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Блог партнёра на публичном лендинге ──────────────────────────────────────
+
+interface BlogPost { id: string; title: string; slug: string; excerpt?: string; coverUrl?: string; publishedAt?: string; createdAt: string; }
+
+function ProviderBlogSection({ providerId }: { providerId: string }) {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const api = process.env.NEXT_PUBLIC_API_URL || '/api';
+    fetch(`${api}/provider-blog/public/${providerId}`)
+      .then(r => r.json())
+      .then(data => { setPosts(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [providerId]);
+
+  if (loading || posts.length === 0) return null;
+
+  return (
+    <div className="bg-white border border-line rounded-xl p-5">
+      <h2 className="text-sm font-semibold text-ink-900 mb-4 flex items-center gap-2">
+        <i className="ti ti-news text-base" style={{ color: '#0BA5CC' }} aria-hidden="true" />
+        Статьи и советы
+      </h2>
+      <div className="space-y-3">
+        {posts.slice(0, 3).map(post => (
+          <a key={post.id} href={`#blog-${post.slug}`}
+            className="flex gap-3 p-3 rounded-xl hover:bg-paper-50 transition-colors group block -mx-1 px-1">
+            {post.coverUrl && (
+              <div className="w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-paper-50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={post.coverUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium text-ink-900 group-hover:text-volt-600 transition-colors line-clamp-2 leading-snug">
+                {post.title}
+              </h3>
+              {post.excerpt && <p className="text-xs text-muted mt-0.5 line-clamp-1">{post.excerpt}</p>}
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {/* Полные тексты статей */}
+      <div className="mt-6 space-y-8">
+        {posts.map(post => (
+          <div key={post.id} id={`blog-${post.slug}`}>
+            <h3 className="text-base font-bold text-ink-900 mb-2">{post.title}</h3>
+            {post.coverUrl && (
+              <div className="rounded-xl overflow-hidden mb-4 aspect-video">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={post.coverUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div
+              className="prose"
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
+            <div className="text-xs text-muted mt-3 pt-3 border-t border-line">
+              {new Date(post.publishedAt || post.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
