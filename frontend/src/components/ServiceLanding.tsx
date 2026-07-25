@@ -461,7 +461,7 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
           )}
 
           {/* Блог партнёра */}
-          <ProviderBlogSection providerId={provider.id} providerSlug={provider.slug} />
+          <ProviderBlogSection providerId={provider.id} />
 
           {/* Отзывы */}
           {provider.reviews.length > 0 && (
