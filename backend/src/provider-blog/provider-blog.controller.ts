@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete,
   Param, Body, Headers, UnauthorizedException, NotFoundException,
 } from '@nestjs/common';
-import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MinLength, Transform } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 
 class CreatePostDto {
@@ -10,7 +10,7 @@ class CreatePostDto {
   @IsOptional() @IsString() excerpt?: string;
   @IsOptional() @IsString() content?: string;
   @IsOptional() @IsString() coverUrl?: string;
-  @IsOptional() @IsBoolean() isPublished?: boolean;
+  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() isPublished?: boolean;
 }
 
 class UpdatePostDto {
@@ -18,7 +18,7 @@ class UpdatePostDto {
   @IsOptional() @IsString() excerpt?: string;
   @IsOptional() @IsString() content?: string;
   @IsOptional() @IsString() coverUrl?: string;
-  @IsOptional() @IsBoolean() isPublished?: boolean;
+  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() isPublished?: boolean;
 }
 
 function slugify(text: string): string {
@@ -31,8 +31,7 @@ function slugify(text: string): string {
     .replace(/[а-яё]/g, c => map[c] || c)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-    .slice(0, 80)
-    + '-' + Date.now().toString(36);
+    .slice(0, 80) + '-' + Date.now().toString(36);
 }
 
 @Controller('provider-blog')
@@ -59,22 +58,33 @@ export class ProviderBlogController {
   async publicPosts(@Param('providerId') providerId: string) {
     return this.prisma.providerPost.findMany({
       where: { providerId, isPublished: true },
-      select: { id: true, title: true, slug: true, excerpt: true, content: true, coverUrl: true, publishedAt: true, createdAt: true },
       orderBy: { publishedAt: 'desc' },
     });
   }
 
-  // Публичное: одна статья по slug
+  // Публичное: свежие статьи всех партнёров (для главной)
+  @Get('latest')
+  async latestPosts() {
+    return this.prisma.providerPost.findMany({
+      where: { isPublished: true },
+      orderBy: { publishedAt: 'desc' },
+      take: 6,
+      include: { provider: { select: { name: true, slug: true, city: true } } },
+    });
+  }
+
+  // Публичное: одна статья
   @Get('public/:providerId/:slug')
   async publicPost(@Param('providerId') providerId: string, @Param('slug') slug: string) {
     const post = await this.prisma.providerPost.findUnique({
       where: { providerId_slug: { providerId, slug } },
+      include: { provider: { select: { name: true, slug: true } } },
     });
     if (!post || !post.isPublished) throw new NotFoundException('Статья не найдена');
     return post;
   }
 
-  // Кабинет: все статьи партнёра (включая черновики)
+  // Кабинет: все статьи партнёра
   @Get('my')
   async myPosts(@Headers('x-partner-token') token: string) {
     const user = await this.resolvePartner(token);
@@ -88,25 +98,22 @@ export class ProviderBlogController {
 
   // Кабинет: создать статью
   @Post('my')
-  async createPost(
-    @Headers('x-partner-token') token: string,
-    @Body() dto: CreatePostDto,
-  ) {
+  async createPost(@Headers('x-partner-token') token: string, @Body() dto: CreatePostDto) {
     const user = await this.resolvePartner(token);
     const provider = user.managedProviders[0];
     if (!provider) throw new NotFoundException('Профиль не найден');
 
-    const slug = slugify(dto.title);
+    const isPublished = dto.isPublished === true;
     return this.prisma.providerPost.create({
       data: {
         providerId: provider.id,
         title: dto.title,
-        slug,
+        slug: slugify(dto.title),
         excerpt: dto.excerpt,
         content: dto.content || '',
         coverUrl: dto.coverUrl,
-        isPublished: dto.isPublished ?? false,
-        publishedAt: dto.isPublished ? new Date() : null,
+        isPublished,
+        publishedAt: isPublished ? new Date() : null,
       },
     });
   }
@@ -122,10 +129,10 @@ export class ProviderBlogController {
     const provider = user.managedProviders[0];
     if (!provider) throw new NotFoundException('Профиль не найден');
 
-    const post = await this.prisma.providerPost.findFirst({
-      where: { id, providerId: provider.id },
-    });
+    const post = await this.prisma.providerPost.findFirst({ where: { id, providerId: provider.id } });
     if (!post) throw new NotFoundException('Статья не найдена');
+
+    const isPublished = dto.isPublished !== undefined ? dto.isPublished === true : post.isPublished;
 
     return this.prisma.providerPost.update({
       where: { id },
@@ -135,8 +142,8 @@ export class ProviderBlogController {
         ...(dto.content !== undefined && { content: dto.content }),
         ...(dto.coverUrl !== undefined && { coverUrl: dto.coverUrl }),
         ...(dto.isPublished !== undefined && {
-          isPublished: dto.isPublished,
-          publishedAt: dto.isPublished && !post.isPublished ? new Date() : post.publishedAt,
+          isPublished,
+          publishedAt: isPublished && !post.isPublished ? new Date() : post.publishedAt,
         }),
       },
     });
@@ -144,17 +151,11 @@ export class ProviderBlogController {
 
   // Кабинет: удалить статью
   @Delete('my/:id')
-  async deletePost(
-    @Headers('x-partner-token') token: string,
-    @Param('id') id: string,
-  ) {
+  async deletePost(@Headers('x-partner-token') token: string, @Param('id') id: string) {
     const user = await this.resolvePartner(token);
     const provider = user.managedProviders[0];
     if (!provider) throw new NotFoundException('Профиль не найден');
-
-    await this.prisma.providerPost.deleteMany({
-      where: { id, providerId: provider.id },
-    });
+    await this.prisma.providerPost.deleteMany({ where: { id, providerId: provider.id } });
     return { ok: true };
   }
 }

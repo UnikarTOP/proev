@@ -3,17 +3,14 @@
 import { useState, useEffect } from 'react';
 
 interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt?: string;
-  content?: string;
-  coverUrl?: string;
-  publishedAt?: string;
-  createdAt: string;
+  id: string; title: string; slug: string;
+  excerpt?: string; content?: string; coverUrl?: string;
+  publishedAt?: string; createdAt: string;
 }
 
-export default function ProviderBlogSection({ providerId }: { providerId: string }) {
+export default function ProviderBlogSection({
+  providerId, providerSlug,
+}: { providerId: string; providerSlug: string }) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
@@ -33,13 +30,13 @@ export default function ProviderBlogSection({ providerId }: { providerId: string
         Статьи и советы
       </h2>
 
-      {/* Карточки-превью */}
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3">
         {posts.map(post => (
-          <a key={post.id} href={`#blog-${post.slug}`}
-            className="flex gap-3 p-2 rounded-xl hover:bg-paper-50 transition-colors group block">
+          <a key={post.id}
+            href={`/services/${providerSlug}/blog/${post.slug}`}
+            className="flex gap-3 p-2 rounded-xl hover:bg-paper-50 transition-colors group block border border-transparent hover:border-line">
             {post.coverUrl && (
-              <div className="w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-paper-50">
+              <div className="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-paper-50">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={post.coverUrl} alt="" className="w-full h-full object-cover" />
               </div>
@@ -48,30 +45,15 @@ export default function ProviderBlogSection({ providerId }: { providerId: string
               <h3 className="text-sm font-medium text-ink-900 group-hover:text-volt-600 transition-colors line-clamp-2 leading-snug">
                 {post.title}
               </h3>
-              {post.excerpt && <p className="text-xs text-muted mt-0.5 line-clamp-1">{post.excerpt}</p>}
+              {post.excerpt && (
+                <p className="text-xs text-muted mt-0.5 line-clamp-1">{post.excerpt}</p>
+              )}
+              <p className="text-xs text-muted mt-1">
+                {new Date(post.publishedAt || post.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                {' '}· Читать →
+              </p>
             </div>
           </a>
-        ))}
-      </div>
-
-      {/* Полные тексты */}
-      <div className="space-y-8 border-t border-line pt-6">
-        {posts.map(post => (
-          <div key={post.id} id={`blog-${post.slug}`}>
-            {post.coverUrl && (
-              <div className="rounded-xl overflow-hidden mb-4 aspect-video">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={post.coverUrl} alt="" className="w-full h-full object-cover" />
-              </div>
-            )}
-            <h3 className="text-base font-bold text-ink-900 mb-3">{post.title}</h3>
-            <div className="prose" dangerouslySetInnerHTML={{ __html: post.content ?? '' }} />
-            <p className="text-xs text-muted mt-3 pt-3 border-t border-line">
-              {new Date(post.publishedAt || post.createdAt).toLocaleDateString('ru-RU', {
-                day: 'numeric', month: 'long', year: 'numeric',
-              })}
-            </p>
-          </div>
         ))}
       </div>
     </div>
