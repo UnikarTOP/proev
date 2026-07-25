@@ -81,7 +81,7 @@ export class NewsService {
             sourceName,
             imageUrl: item.enclosureUrl ?? null,
             publishedAt: item.pubDate ? new Date(item.pubDate) : null,
-            status: 'pending', // всегда на модерацию — публикуется только после одобрения в /admin
+            status: 'approved', // автоматически публикуется — отклонять можно вручную в /admin
             sourceId,
           },
         });

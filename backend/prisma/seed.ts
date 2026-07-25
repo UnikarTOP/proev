@@ -377,9 +377,84 @@ async function main() {
   await ensureDefaultIntegrations();
   await ensureDefaultNewsSources();
   await seedServiceCategories();
+  await seedDemoPartner();
   await importOsmStations();
   await importOcmStations();
   await importManualStations();
+}
+
+async function seedDemoPartner() {
+  const category = await prisma.serviceCategory.findUnique({ where: { slug: 'sto' } });
+  if (!category) { console.log('Категория СТО не найдена — запустите seed повторно'); return; }
+
+  await prisma.serviceProvider.upsert({
+    where: { slug: 'ev-service-demo' },
+    update: {},
+    create: {
+      name: 'EV Service — Демо СТО',
+      slug: 'ev-service-demo',
+      categoryId: category.id,
+      tagline: 'Профессиональный сервис для электромобилей в Москве',
+      description: 'Специализированное СТО для обслуживания и ремонта электромобилей всех марок. ' +
+        'Работаем с Tesla, BYD, Zeekr, Evolute, Москвич 3е и другими. ' +
+        'Официальная гарантия на все работы. Диагностика за 1 час. Собственный склад запчастей.',
+      city: 'Москва',
+      address: 'ул. Нагатинская, 18с2',
+      phone: '+7 (495) 123-45-67',
+      telegram: 'evservice_demo',
+      workingHours: 'Пн–Вс 9:00–21:00',
+      yearFounded: 2021,
+      services: [
+        'Диагностика батареи',
+        'ТО по регламенту',
+        'Ремонт электромотора',
+        'Замена зарядного порта',
+        'Обслуживание тормозной системы',
+        'Ремонт подвески',
+        'Кондиционирование батареи',
+        'Обновление прошивки',
+      ],
+      brands: [
+        'Tesla Model 3', 'Tesla Model Y',
+        'BYD Han', 'BYD Atto 3', 'BYD Seal',
+        'Zeekr 001', 'Zeekr X',
+        'Москвич 3е',
+        'Evolute i-Pro', 'Evolute i-Joy',
+        'NIO ET5',
+      ],
+      photos: [
+        'https://images.unsplash.com/photo-1625231336479-178cfde2d844?w=800',
+        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
+        'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800',
+      ],
+      ratingAvg: 4.9,
+      reviewCount: 47,
+      verified: true,
+      isPaidPlacement: true,
+      isPublished: true,
+    },
+  });
+
+  // Добавляем демо-отзывы если их ещё нет
+  const provider = await prisma.serviceProvider.findUnique({ where: { slug: 'ev-service-demo' } });
+  if (!provider) return;
+
+  const existingReviews = await prisma.providerReview.count({ where: { providerId: provider.id } });
+  if (existingReviews === 0) {
+    await prisma.providerReview.createMany({
+      data: [
+        { providerId: provider.id, rating: 5, text: 'Отличный сервис! Диагностику Tesla Model 3 сделали за час, нашли проблему с батареей и быстро починили. Буду обращаться постоянно.', createdAt: new Date('2026-07-10') },
+        { providerId: provider.id, rating: 5, text: 'Единственное место в Москве где разбираются в BYD Han. Обслуживание прошло отлично, цены адекватные.', createdAt: new Date('2026-07-05') },
+        { providerId: provider.id, rating: 4, text: 'Хорошая работа по Zeekr 001. Единственный минус — очередь на 3 дня вперёд, запись нужна заранее.', createdAt: new Date('2026-06-28') },
+      ],
+    });
+    await prisma.serviceProvider.update({
+      where: { id: provider.id },
+      data: { reviewCount: 47 },
+    });
+  }
+
+  console.log('Демо-партнёр EV Service создан → /services/ev-service-demo');
 }
 
 async function ensureDefaultNewsSources() {
