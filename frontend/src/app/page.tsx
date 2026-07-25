@@ -1,6 +1,6 @@
 import { RouteStrip } from '@/components/RouteStrip';
 import { apiGet, type StationStats } from '@/lib/api';
-import LatestPosts from '@/components/LatestPosts';
+import HomeNews from '@/components/HomeNews';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,8 +73,8 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* СТАТЬИ ПАРТНЁРОВ */}
-      <LatestPosts />
+      {/* НОВОСТИ */}
+      <HomeNews />
 
       {/* STATS */}
       <div className="max-w-[1120px] mx-auto px-4 md:px-6 mt-12 md:mt-16 pt-8 border-t border-line grid grid-cols-2 md:flex md:flex-wrap md:justify-between gap-6 md:gap-8">
