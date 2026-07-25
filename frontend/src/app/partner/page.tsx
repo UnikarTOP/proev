@@ -51,7 +51,7 @@ export default function PartnerRegisterPage() {
   };
 
   return (
-    <div className="max-w-[640px] mx-auto px-6 py-12">
+    <div className="max-w-[640px] mx-auto px-4 md:px-6 py-8 md:py-12">
       {/* Заголовок */}
       <div className="mb-8">
         <span className="text-xs font-semibold text-volt-600 uppercase tracking-widest">Партнёрам</span>
@@ -62,7 +62,7 @@ export default function PartnerRegisterPage() {
       </div>
 
       {/* Преимущества */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
         {[
           { icon: 'ti-users', title: 'Аудитория EV', desc: 'Владельцы электромобилей по всей России' },
           { icon: 'ti-file-pencil', title: 'Свой лендинг', desc: 'Редактируйте страницу без программистов' },

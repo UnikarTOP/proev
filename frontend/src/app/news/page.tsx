@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export default function NewsPage() {
   return (
-    <div className="max-w-[960px] mx-auto px-6 py-8">
+    <div className="max-w-[960px] mx-auto px-4 md:px-6 py-8">
       <div className="mb-6">
         <h1 className="text-[26px] font-bold text-ink-900 tracking-tight mb-1">
           Новости об электромобилях

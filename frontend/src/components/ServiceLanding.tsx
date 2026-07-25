@@ -148,7 +148,7 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
     : null;
 
   return (
-    <div className="max-w-[880px] mx-auto px-4 py-8">
+    <div className="max-w-[880px] mx-auto px-4 py-6 md:py-8">
       {/* Хлебные крошки */}
       <nav className="text-sm mb-6 flex items-center gap-2 flex-wrap">
         <a href="/services" className="text-volt-600 hover:underline underline-offset-2 transition-colors">
@@ -281,7 +281,7 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
                 <i className="ti ti-photo text-base" style={{ color: '#0BA5CC' }} aria-hidden="true" />
                 Фото
               </h2>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {provider.photos.slice(0, 6).map((url, i) => (
                   <div key={i} className="aspect-square rounded-lg overflow-hidden bg-paper-50 border border-line">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

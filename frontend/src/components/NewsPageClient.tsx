@@ -299,7 +299,7 @@ export default function NewsPageClient() {
           {featured.length > 0 && (
             <>
               <p className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-3">Свежее</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {featured.map((item) => (
                   <a key={item.id} href={item.sourceUrl} target="_blank" rel="noopener noreferrer"
                     className="group block bg-white border border-line rounded-xl overflow-hidden hover:border-graphite-900/30 transition-colors"

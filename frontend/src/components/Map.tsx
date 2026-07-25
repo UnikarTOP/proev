@@ -232,7 +232,7 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
   return (
     <div className="flex flex-col gap-4">
       {/* Фильтры */}
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide items-center flex-nowrap md:flex-wrap">
         <FilterSelect
           value={filterStatus}
           onChange={setFilterStatus}
@@ -271,15 +271,15 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
       </div>
 
       {/* Карта + боковая панель */}
-      <div className="flex gap-4">
+      <div className="flex flex-col-reverse md:flex-row gap-4">
         <div
           ref={containerRef}
           className="flex-1 rounded-xl overflow-hidden border border-line"
-          style={{ height: 560 }}
+          style={{ height: typeof window !== 'undefined' && window.innerWidth < 768 ? 400 : 560 }}
         />
 
         {selected && (
-          <div style={{ width: 300, flexShrink: 0 }}>
+          <div className="w-full md:w-72 md:shrink-0">
             <div style={{
               background: 'var(--surface-2,#fff)',
               border: '0.5px solid #DCE1E8',
