@@ -423,9 +423,18 @@ async function seedDemoPartner() {
         'NIO ET5',
       ],
       photos: [
-        'https://images.unsplash.com/photo-1625231336479-178cfde2d844?w=800',
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-        'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800',
+        // EV в сервисном центре — Tesla на подъёмнике
+        'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&q=80',
+        // Зарядка электромобиля
+        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+        // Современный автосервис — диагностика
+        'https://images.unsplash.com/photo-1617886903355-9354bb57751f?w=800&q=80',
+        // Электромобиль BYD/Chinese EV крупным планом
+        'https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?w=800&q=80',
+        // Зарядная станция в паркинге
+        'https://images.unsplash.com/photo-1647166545674-ce28ce93bdca?w=800&q=80',
+        // Мастер работает с EV
+        'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800&q=80',
       ],
       ratingAvg: 4.9,
       reviewCount: 47,

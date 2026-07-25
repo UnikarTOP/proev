@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface Category { id: string; name: string; slug: string; }
 interface Provider {
@@ -12,18 +13,26 @@ interface Provider {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  'sto': 'ti-tool', 'zaryadki': 'ti-plug', 'strahovanie': 'ti-shield-check',
-  'vykup': 'ti-car', 'obuchenie': 'ti-certificate', 'default': 'ti-category',
+  'sto': 'ti-tool',
+  'zaryadki-dom': 'ti-plug',
+  'ustanovka': 'ti-bolt',
+  'strahovanie': 'ti-shield-check',
+  'vykup': 'ti-car',
+  'obuchenie': 'ti-certificate',
+  'arenda': 'ti-key',
+  'tyuning': 'ti-settings',
+  'default': 'ti-category',
 };
 
 function getIcon(slug: string) {
   return CATEGORY_ICONS[slug] || CATEGORY_ICONS['default'];
 }
 
-export default function ServicesPage() {
+function ServicesContent() {
+  const searchParams = useSearchParams();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCategory, setActiveCategory] = useState('');
+  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || '');
   const [loading, setLoading] = useState(true);
 
   const api = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -204,5 +213,19 @@ function ProviderCard({ provider }: { provider: Provider }) {
         <span className="text-xs text-muted">Оставить заявку</span>
       </div>
     </a>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-[1120px] mx-auto px-6 py-10 animate-pulse">
+        <div className="h-8 bg-paper-50 rounded w-64 mb-6" />
+        <div className="flex gap-2 mb-8">{[0,1,2,3].map(i => <div key={i} className="h-9 w-28 bg-paper-50 rounded-full border border-line" />)}</div>
+        <div className="grid md:grid-cols-3 gap-5">{[0,1,2].map(i => <div key={i} className="h-64 bg-paper-50 rounded-xl border border-line" />)}</div>
+      </div>
+    }>
+      <ServicesContent />
+    </Suspense>
   );
 }
