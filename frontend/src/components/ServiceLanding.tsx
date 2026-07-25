@@ -150,14 +150,16 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
   return (
     <div className="max-w-[880px] mx-auto px-4 py-8">
       {/* Хлебные крошки */}
-      <nav className="text-sm text-muted mb-6 flex items-center gap-2 flex-wrap">
-        <a href="/services" className="hover:text-volt-600 transition-colors">Сервисы</a>
-        <i className="ti ti-chevron-right text-xs" aria-hidden="true" />
-        <a href={`/services?category=${provider.category.slug}`} className="hover:text-volt-600 transition-colors">
+      <nav className="text-sm mb-6 flex items-center gap-2 flex-wrap">
+        <a href="/services" className="text-volt-600 hover:underline underline-offset-2 transition-colors">
+          ← Все сервисы
+        </a>
+        <i className="ti ti-chevron-right text-xs text-muted" aria-hidden="true" />
+        <a href={`/services?category=${provider.category.slug}`} className="text-muted hover:text-ink-900 hover:underline underline-offset-2 transition-colors">
           {provider.category.name}
         </a>
-        <i className="ti ti-chevron-right text-xs" aria-hidden="true" />
-        <span className="text-ink-900 font-medium">{provider.name}</span>
+        <i className="ti ti-chevron-right text-xs text-muted" aria-hidden="true" />
+        <span className="text-ink-900 font-medium truncate max-w-[200px]">{provider.name}</span>
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
