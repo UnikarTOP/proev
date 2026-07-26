@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Headers, UnauthorizedException, NotFoundException,
+  Param, Body, Query, Headers, UnauthorizedException, NotFoundException,
 } from '@nestjs/common';
 import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -51,6 +51,27 @@ export class ProviderBlogController {
     } catch {
       throw new UnauthorizedException('Недействительный токен');
     }
+  }
+
+  /** GET /api/provider-blog/feed?limit=6 — лента статей для главной */
+  @Get('feed')
+  async feed(@Query('limit') limit = '6') {
+    const take = Math.min(parseInt(limit) || 6, 20);
+    return this.prisma.providerPost.findMany({
+      where: { isPublished: true, provider: { isPublished: true } },
+      select: {
+        id: true, title: true, slug: true, excerpt: true,
+        coverUrl: true, publishedAt: true, createdAt: true,
+        provider: {
+          select: {
+            id: true, name: true, slug: true, logoUrl: true, city: true,
+            category: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { publishedAt: 'desc' },
+      take,
+    });
   }
 
   // Публичное: все опубликованные посты партнёра
