@@ -22,7 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/charge-map" className="hover:text-volt-600 transition-colors">Карта зарядок</a>
               <a href="/services" className="hover:text-volt-600 transition-colors">Сервисы</a>
               <a href="/news" className="hover:text-volt-600 transition-colors">Новости</a>
-              <a href="/partner" className="hover:text-volt-600 transition-colors">Партнёрам</a>
+              <a href="/about" className="hover:text-volt-600 transition-colors">О проекте</a>
+              <a href="/pricing" className="hover:text-volt-600 transition-colors">Тарифы</a>
             </div>
 
             <div className="flex items-center gap-3">
@@ -38,14 +39,47 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MobileNav />
 
         <footer className="border-t border-line mt-16 mb-20 md:mb-0">
-          <div className="max-w-[1120px] mx-auto px-4 md:px-6 py-8">
-            <div className="hidden md:flex flex-wrap gap-4 text-sm text-muted mb-6">
-              <a href="/charge-map" className="hover:text-ink-900 transition-colors">Карта зарядок</a>
-              <a href="/services" className="hover:text-ink-900 transition-colors">Сервисы</a>
-              <a href="/news" className="hover:text-ink-900 transition-colors">Новости</a>
-              <a href="/partner" className="hover:text-ink-900 transition-colors">Партнёрам</a>
+          <div className="max-w-[1120px] mx-auto px-4 md:px-6 py-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+              <div>
+                <div className="font-bold text-lg text-ink-900 mb-3">
+                  proev<span className="text-volt-600">.ru</span>
+                </div>
+                <p className="text-xs text-muted leading-relaxed">
+                  Платформа для владельцев электромобилей в России
+                </p>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Сервисы</div>
+                <div className="space-y-2">
+                  {[['Карта зарядок','/charge-map'],['Каталог сервисов','/services'],['Новости EV','/news']].map(([l,h]) => (
+                    <a key={h} href={h} className="block text-sm text-muted hover:text-ink-900 transition-colors">{l}</a>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Бизнесу</div>
+                <div className="space-y-2">
+                  {[['Для партнёров','/partner'],['Тарифы','/pricing'],['API документация','/partner/cabinet']].map(([l,h]) => (
+                    <a key={h} href={h} className="block text-sm text-muted hover:text-ink-900 transition-colors">{l}</a>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Компания</div>
+                <div className="space-y-2">
+                  {[['О проекте','/about'],['Политика конфиденциальности','/privacy'],['Пользовательское соглашение','/terms']].map(([l,h]) => (
+                    <a key={h} href={h} className="block text-sm text-muted hover:text-ink-900 transition-colors">{l}</a>
+                  ))}
+                </div>
+              </div>
             </div>
-            <p className="text-center md:text-left text-sm text-muted">© {new Date().getFullYear()} proev.ru</p>
+            <div className="border-t border-line pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
+              <p className="text-xs text-muted">© {new Date().getFullYear()} proev.ru — все права защищены</p>
+              <p className="text-xs text-muted">
+                <a href="mailto:hello@proev.ru" className="hover:text-ink-900 transition-colors">hello@proev.ru</a>
+              </p>
+            </div>
           </div>
         </footer>
       </body>
