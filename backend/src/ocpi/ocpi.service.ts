@@ -235,7 +235,7 @@ export class OcpiService {
       const externalId = `ocpi:${source}:${loc.id}`;
 
       const existing = await this.prisma.chargingStation.findFirst({
-        where: { externalId },
+        where: { externalId: { equals: externalId } },
       });
 
       const data = {
@@ -245,6 +245,7 @@ export class OcpiService {
         longitude: lng,
         status: status as any,
         connectors,
+        connectorTypes: connectors,
         powerKw: maxPower > 0 ? maxPower : null,
         network: source,
         externalId,
