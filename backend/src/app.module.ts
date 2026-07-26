@@ -12,6 +12,7 @@ import { UploadModule } from './upload/upload.module';
 import { ProviderBlogModule } from './provider-blog/provider-blog.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PublicApiModule } from './public-api/public-api.module';
+import { OcpiModule } from './ocpi/ocpi.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PublicApiModule } from './public-api/public-api.module';
     ProviderBlogModule,
     NotificationsModule,
     PublicApiModule,
+    OcpiModule,
   ],
 })
 export class AppModule {}
