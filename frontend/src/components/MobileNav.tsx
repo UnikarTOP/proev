@@ -3,66 +3,71 @@
 import { usePathname } from 'next/navigation';
 
 const TABS = [
-  { href: '/', icon: 'ti-home', label: 'Главная', exact: true },
-  { href: '/news', icon: 'ti-news', label: 'Новости' },
-  { href: '/charge-map', icon: 'ti-bolt', label: 'Зарядки', center: true },
-  { href: '/services', icon: 'ti-tools', label: 'Сервисы' },
-  { href: '/partner', icon: 'ti-briefcase', label: 'Партнёрам' },
+  { href: '/',           label: 'Главная',   icon: '🏠', ti: 'ti-home' },
+  { href: '/news',       label: 'Новости',   icon: '📰', ti: 'ti-news' },
+  { href: '/charge-map', label: 'Зарядки',   icon: '⚡', ti: 'ti-bolt',       center: true },
+  { href: '/services',   label: 'Сервисы',   icon: '🔧', ti: 'ti-tools' },
+  { href: '/partner',    label: 'Партнёрам', icon: '💼', ti: 'ti-briefcase' },
 ];
 
 export default function MobileNav() {
   const pathname = usePathname();
 
-  // Скрываем на страницах кабинета и сброса пароля
   if (
     pathname.startsWith('/partner/cabinet') ||
     pathname.startsWith('/partner/reset-password')
   ) return null;
 
-  const isActive = (href: string, exact?: boolean) =>
-    exact ? pathname === href : pathname.startsWith(href);
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
     <>
-      {/* Отступ снизу чтобы контент не прятался за навигацией */}
-      <div className="h-20 md:hidden" aria-hidden="true" />
+      {/* Отступ чтобы контент не прятался за панелью */}
+      <div style={{ height: 72 }} className="md:hidden" aria-hidden="true" />
 
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50"
+        className="md:hidden"
         style={{
-          background: 'var(--surface-2)',
-          borderTop: '0.5px solid var(--border)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: '#fff',
+          borderTop: '0.5px solid #DCE1E8',
+          paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         }}
-        aria-label="Мобильная навигация"
+        aria-label="Навигация"
       >
-        <div className="grid grid-cols-5 items-end">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', alignItems: 'end', height: 56 }}>
           {TABS.map(tab => {
-            const active = isActive(tab.href, tab.exact);
+            const active = isActive(tab.href);
 
             if (tab.center) {
               return (
                 <a
                   key={tab.href}
                   href={tab.href}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 4 }}
                   aria-label={tab.label}
-                  className="flex flex-col items-center pb-2 pt-1"
                 >
-                  <div
-                    className="flex items-center justify-center rounded-full -translate-y-4"
-                    style={{
-                      width: 52, height: 52,
-                      background: active ? '#0BA5CC' : '#0B1220',
-                      boxShadow: '0 4px 16px rgba(11,165,204,0.35)',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <i className="ti ti-bolt text-white" style={{ fontSize: 24 }} aria-hidden="true" />
+                  {/* FAB кнопка приподнята */}
+                  <div style={{
+                    width: 48, height: 48, borderRadius: '50%',
+                    background: active ? '#0BA5CC' : '#0B1220',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginTop: -20,
+                    border: '3px solid #fff',
+                    fontSize: 22,
+                    lineHeight: 1,
+                  }}>
+                    ⚡
                   </div>
-                  <span
-                    className="text-[10px] font-semibold -mt-3"
-                    style={{ color: active ? '#0BA5CC' : 'var(--text-muted)' }}
-                  >
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, marginTop: 2,
+                    color: active ? '#0BA5CC' : '#6B7686',
+                  }}>
                     {tab.label}
                   </span>
                 </a>
@@ -73,18 +78,24 @@ export default function MobileNav() {
               <a
                 key={tab.href}
                 href={tab.href}
-                className="flex flex-col items-center gap-0.5 py-2 px-1"
-                style={{ color: active ? '#0BA5CC' : 'var(--text-muted)', transition: 'color 0.15s' }}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 2, height: '100%',
+                  color: active ? '#0BA5CC' : '#6B7686',
+                  textDecoration: 'none',
+                  position: 'relative',
+                }}
                 aria-current={active ? 'page' : undefined}
               >
-                <i className={`ti ${tab.icon}`} style={{ fontSize: 22 }} aria-hidden="true" />
-                <span className="text-[10px] font-medium leading-tight">{tab.label}</span>
+                {/* Активный индикатор сверху */}
                 {active && (
-                  <div
-                    className="absolute bottom-0 rounded-full"
-                    style={{ width: 4, height: 4, background: '#0BA5CC', marginBottom: 1 }}
-                  />
+                  <div style={{
+                    position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                    width: 20, height: 2, borderRadius: 1, background: '#0BA5CC',
+                  }} />
                 )}
+                <span style={{ fontSize: 22, lineHeight: 1 }}>{tab.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: active ? 600 : 400 }}>{tab.label}</span>
               </a>
             );
           })}
