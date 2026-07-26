@@ -10,12 +10,6 @@ import { PrismaService } from './prisma/prisma.service';
 const UPLOADS_DIR = join(process.cwd(), 'uploads');
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
-// TypeScript при компиляции в CommonJS переписывает динамический import()
-// в require() под капотом — а require() не может загрузить чистый ESM-пакет
-// (вся экосистема AdminJS v7 — "type": "module"). new Function здесь —
-// стандартный обходной приём: он прячет вызов import() от трансформации
-// TS, и в рантайме остаётся настоящий нативный ESM-импорт, который Node
-// умеет использовать даже из CommonJS-файла.
 const dynamicImport = new Function('specifier', 'return import(specifier)') as (
   specifier: string,
 ) => Promise<any>;
@@ -25,21 +19,11 @@ async function bootstrap() {
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useStaticAssets(UPLOADS_DIR, { prefix: '/uploads' });
-
   await mountAdmin(app);
-
-  // /admin монтируется отдельно от общего API-префикса
   app.setGlobalPrefix('api', { exclude: ['admin', 'admin/(.*)'] });
-
   await app.listen(process.env.PORT || 3001);
 }
 
-/**
- * ВАЖНО: конкретные сигнатуры функций AdminJS/@adminjs/express
- * (buildAuthenticatedRouter и т.д.) я не мог проверить запуском в этой
- * песочнице — код написан по задокументированному паттерну, но если
- * версия пакета разойдётся в деталях API, сверься с README на npm.
- */
 async function mountAdmin(app: any) {
   const AdminJSModule = await dynamicImport('adminjs');
   const AdminJS = AdminJSModule.default ?? AdminJSModule;
@@ -50,178 +34,122 @@ async function mountAdmin(app: any) {
   AdminJS.registerAdapter({ Database, Resource });
 
   const prisma: PrismaService = app.get(PrismaService);
+  const isAdmin = ({ currentAdmin }: any) => currentAdmin?.role === 'admin';
+  const isMod   = ({ currentAdmin }: any) => ['admin', 'moderator'].includes(currentAdmin?.role);
 
-  function isAdmin({ currentAdmin }: any) {
-    return currentAdmin?.role === 'admin';
-  }
-
-  function buildResource(modelName: string, options: Record<string, unknown> = {}) {
-    return {
-      resource: { model: getModelByName(modelName), client: prisma },
-      options,
-    };
-  }
+  const res = (modelName: string, opts: any = {}) => ({
+    resource: { model: getModelByName(modelName), client: prisma },
+    options: opts,
+  });
 
   const admin = new AdminJS({
     rootPath: '/admin',
     branding: {
-      companyName: 'proev.ru — админка',
+      companyName: 'proev.ru',
+      logo: false,
       withMadeWithLove: false,
+      favicon: '',
     },
-    resources: [
-      buildResource('ChargingStation', {
-        navigation: { name: 'Зарядные станции' },
-        listProperties: ['name', 'city', 'status', 'verified', 'networkOperator'],
-        editProperties: [
-          'name', 'networkOperator', 'latitude', 'longitude', 'address', 'city',
-          'connectorTypes', 'chargingSpeed', 'powerKw', 'priceInfo', 'status', 'verified',
-        ],
-        actions: {
-          delete: { isAccessible: isAdmin },
-          bulkDelete: { isAccessible: isAdmin },
-        },
-      }),
-      buildResource('StationReview', {
-        navigation: { name: 'Зарядные станции' },
-        actions: { delete: { isAccessible: isAdmin } },
-      }),
-      buildResource('ServiceCategory', {
-        navigation: { name: 'Сервисы' },
-        actions: {
-          new: { isAccessible: isAdmin },
-          edit: { isAccessible: isAdmin },
-          delete: { isAccessible: isAdmin },
-        },
-      }),
-      buildResource('ServiceProvider', {
-        navigation: { name: 'Сервисы' },
-        listProperties: ['name', 'city', 'isPublished', 'verified', 'isPaidPlacement'],
-        editProperties: ['name', 'slug', 'tagline', 'description', 'city', 'address',
-          'phone', 'telegram', 'website', 'logoUrl', 'services', 'brands',
-          'workingHours', 'yearFounded', 'isPaidPlacement', 'verified', 'isPublished'],
-        properties: {
-          isPaidPlacement: { isVisible: { list: true, show: true, filter: true, edit: true } },
-        },
-        actions: { delete: { isAccessible: isAdmin } },
-      }),
-      // ── Аккаунты партнёров ────────────────────────────────────────────────
-      {
-        resource: { model: getModelByName('User'), client: prisma },
-        options: {
-          navigation: { name: 'Партнёры' },
-          id: 'PartnerAccounts',
-          listProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
-          showProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
-          editProperties: ['name', 'email', 'phone'],
-          filterProperties: ['role'],
-          properties: {
-            role: {
-              availableValues: [
-                { value: 'user',      label: 'Пользователь' },
-                { value: 'partner',   label: 'Партнёр' },
-                { value: 'moderator', label: 'Модератор' },
-                { value: 'admin',     label: 'Администратор' },
-              ],
-            },
-            passwordHash: { isVisible: false },
-          },
+    locale: {
+      language: 'ru',
+      availableLanguages: ['ru'],
+      translations: {
+        ru: {
           actions: {
-            new: { isAccessible: isAdmin },
-            delete: { isAccessible: isAdmin },
-            list: {
-              isAccessible: isAdmin,
-              // Показываем только партнёров — не всех пользователей
-              after: async (response: any) => {
-                if (response.records) {
-                  response.records = response.records.filter(
-                    (r: any) => r.params?.role === 'partner',
-                  );
-                }
-                return response;
-              },
-            },
-            // ── Сменить пароль ────────────────────────────────────────────
-            resetPassword: {
-              actionType: 'record',
-              label: '🔑 Новый пароль',
-              icon: 'Key',
-              isVisible: (ctx: any) => ctx.record?.params?.role === 'partner',
-              handler: async (request: any, response: any, context: any) => {
-                const { record, currentAdmin } = context;
-                const userId = record.params.id;
-
-                const newPassword = Math.random().toString(36).slice(2, 10);
-                const passwordHash = await bcrypt.hash(newPassword, 12);
-
-                await prisma.user.update({
-                  where: { id: userId },
-                  data: { passwordHash },
-                });
-
-                const email = record.params.email;
-                return {
-                  record: record.toJSON(currentAdmin),
-                  notice: {
-                    message: `Новый пароль для ${email}: ${newPassword} — скопируйте и отправьте партнёру!`,
-                    type: 'success',
-                  },
-                };
-              },
-            },
-            // ── Заблокировать / разблокировать ────────────────────────────
-            toggleBlock: {
-              actionType: 'record',
-              label: '🚫 Заблокировать',
-              icon: 'Ban',
-              isVisible: (ctx: any) => ctx.record?.params?.role === 'partner',
-              handler: async (request: any, response: any, context: any) => {
-                const { record, currentAdmin } = context;
-                // Меняем роль на 'blocked' или обратно на 'partner'
-                const current = record.params.role;
-                const newRole = current === 'blocked' ? 'partner' : 'blocked';
-                await prisma.user.update({
-                  where: { id: record.params.id },
-                  data: { role: newRole as any },
-                });
-                return {
-                  record: record.toJSON(currentAdmin),
-                  notice: {
-                    message: newRole === 'blocked'
-                      ? 'Партнёр заблокирован — вход в кабинет закрыт'
-                      : 'Партнёр разблокирован',
-                    type: newRole === 'blocked' ? 'info' : 'success',
-                  },
-                };
-              },
-            },
+            new:         'Создать',
+            edit:        'Редактировать',
+            show:        'Просмотр',
+            delete:      'Удалить',
+            bulkDelete:  'Удалить выбранные',
+            list:        'Список',
+          },
+          buttons: {
+            save:        'Сохранить',
+            addNewItem:  'Добавить',
+            filter:      'Фильтр',
+            applyChanges: 'Применить',
+            resetFilter: 'Сбросить',
+            confirmRemovalMany: 'Удалить {{count}} записей',
+            logout:      'Выйти',
+          },
+          labels: {
+            navigation:       'Навигация',
+            pages:            'Страницы',
+            selectedRecords:  '{{count}} выбрано',
+            filters:          'Фильтры',
+            adminVersion:     'Admin v{{version}}',
+            appVersion:       'proev.ru v0.1',
+          },
+          messages: {
+            successfullyCreated:   'Запись создана',
+            successfullyDeleted:   'Запись удалена',
+            successfullyUpdated:   'Запись обновлена',
+            thereWereValidationErrors: 'Ошибки валидации',
+            forbiddenError: 'Нет доступа',
+            anyForbiddenError: 'Нет доступа к этому действию',
+            successfullyBulkDeleted: '{{count}} записей удалено',
+            notFound: 'Запись не найдена',
+            noRecordsSelected: 'Выберите записи',
+            confirmDelete: 'Вы уверены?',
+          },
+          properties: {
+            id:         'ID',
+            createdAt:  'Создано',
+            updatedAt:  'Обновлено',
+            password:   'Пароль',
           },
         },
       },
+    },
+    resources: [
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // ПАРТНЁРЫ
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // ── Заявки на партнёрство ───────────────────────────────────────────
       {
         resource: { model: getModelByName('PartnerApplication'), client: prisma },
         options: {
-          navigation: { name: 'Партнёры' },
+          navigation: { name: '👥 Партнёры' },
           listProperties: ['companyName', 'city', 'email', 'phone', 'status', 'createdAt'],
           showProperties: ['companyName', 'city', 'email', 'phone', 'categoryId',
             'description', 'website', 'status', 'rejectionReason', 'adminNote', 'createdAt'],
           editProperties: ['status', 'adminNote', 'rejectionReason'],
           filterProperties: ['status'],
+          properties: {
+            companyName:     { label: 'Название компании' },
+            city:            { label: 'Город' },
+            email:           { label: 'Email' },
+            phone:           { label: 'Телефон' },
+            categoryId:      { label: 'Категория' },
+            description:     { label: 'Описание' },
+            website:         { label: 'Сайт' },
+            status:          { label: 'Статус',
+              availableValues: [
+                { value: 'pending',  label: '⏳ На рассмотрении' },
+                { value: 'approved', label: '✅ Одобрена' },
+                { value: 'rejected', label: '❌ Отклонена' },
+              ],
+            },
+            adminNote:       { label: 'Заметка администратора (внутренняя)' },
+            rejectionReason: { label: 'Причина отказа (отправляется партнёру)' },
+            createdAt:       { label: 'Дата заявки' },
+          },
           actions: {
-            new: { isAccessible: () => false },
+            new:    { isAccessible: () => false },
             delete: { isAccessible: isAdmin },
-            // ── Одобрить заявку ───────────────────────────────────────────
+            // ── Одобрить заявку ────────────────────────────────────────────
             approve: {
               actionType: 'record',
-              label: '✓ Одобрить',
+              label: '✅ Одобрить',
               icon: 'Check',
-              isVisible: (ctx: any) => ctx.record?.params?.status === 'pending',
-              handler: async (request: any, response: any, context: any) => {
+              isVisible: (ctx: any) => ['pending', 'rejected'].includes(ctx.record?.params?.status),
+              handler: async (request: any, _response: any, context: any) => {
                 const { record, currentAdmin } = context;
-                const appId = record.params.id;
-                const app = await prisma.partnerApplication.findUnique({ where: { id: appId } });
+                const app = await prisma.partnerApplication.findUnique({ where: { id: record.params.id } });
                 if (!app) return { record: record.toJSON(currentAdmin), notice: { message: 'Заявка не найдена', type: 'error' } };
 
-                // Создаём пользователя с ролью partner
                 const tempPassword = Math.random().toString(36).slice(2, 10);
                 const passwordHash = await bcrypt.hash(tempPassword, 12);
 
@@ -235,22 +163,20 @@ async function mountAdmin(app: any) {
                   },
                 });
 
-                // Создаём базовый профиль провайдера
                 const slug = app.companyName
                   .toLowerCase()
                   .replace(/[^a-zа-яё0-9\s]/gi, '')
                   .replace(/\s+/g, '-')
-                  .replace(/[а-яё]/gi, (c) => ({
+                  .replace(/[а-яё]/gi, (c: string) => ({
                     а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'y',
                     к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',
                     х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
-                  }[c.toLowerCase()] || c))
+                  }[c] ?? c))
                   + '-' + Date.now().toString(36);
 
-                // Находим первую категорию если не указана
-                const categoryId = app.categoryId || (
-                  await prisma.serviceCategory.findFirst()
-                )?.id;
+                const category = await prisma.serviceCategory.findFirst({
+                  where: { id: app.categoryId ?? undefined },
+                });
 
                 await prisma.serviceProvider.create({
                   data: {
@@ -260,34 +186,33 @@ async function mountAdmin(app: any) {
                     phone: app.phone,
                     website: app.website,
                     description: app.description,
-                    categoryId: categoryId!,
+                    categoryId: category?.id ?? (await prisma.serviceCategory.findFirst())?.id ?? '',
                     ownerId: user.id,
                     isPublished: false,
                   },
                 });
 
-                // Обновляем заявку
                 await prisma.partnerApplication.update({
-                  where: { id: appId },
-                  data: { status: 'approved', userId: user.id },
+                  where: { id: record.params.id },
+                  data: { status: 'approved' },
                 });
 
                 return {
                   record: record.toJSON(currentAdmin),
                   notice: {
-                    message: `Одобрено! Пользователь создан: ${app.email} / ${tempPassword} (показывается только сейчас — скопируйте!)`,
+                    message: `✅ Одобрено! Аккаунт создан. Email: ${app.email} | Временный пароль: ${tempPassword}`,
                     type: 'success',
                   },
                 };
               },
             },
-            // ── Отклонить заявку ─────────────────────────────────────────
+            // ── Отклонить заявку ──────────────────────────────────────────
             reject: {
               actionType: 'record',
-              label: '✗ Отклонить',
+              label: '❌ Отклонить',
               icon: 'X',
               isVisible: (ctx: any) => ctx.record?.params?.status === 'pending',
-              handler: async (request: any, response: any, context: any) => {
+              handler: async (request: any, _response: any, context: any) => {
                 const { record, currentAdmin } = context;
                 await prisma.partnerApplication.update({
                   where: { id: record.params.id },
@@ -302,140 +227,401 @@ async function mountAdmin(app: any) {
           },
         },
       },
-      buildResource('Lead', {
-        navigation: { name: 'Лиды' },
-        listProperties: ['name', 'phone', 'status', 'providerId', 'createdAt'],
-        actions: { delete: { isAccessible: isAdmin } },
-      }),
-      buildResource('Article', { navigation: { name: 'Блог' } }),
-      buildResource('NewsSource', {
-        navigation: { name: 'Новости' },
-        listProperties: ['name', 'feedUrl', 'isEnabled', 'lastFetchedAt', 'lastError'],
-        editProperties: ['name', 'feedUrl', 'isEnabled'],
-        properties: {
-          lastError: { isVisible: { list: true, show: true, edit: false, filter: false } },
-          lastFetchedAt: { isVisible: { list: true, show: true, edit: false, filter: false } },
-        },
-      }),
-      buildResource('NewsItem', {
-        navigation: { name: 'Новости' },
-        listProperties: ['title', 'sourceName', 'isOriginal', 'status', 'publishedAt', 'fetchedAt'],
-        filterProperties: ['status', 'sourceName', 'isOriginal'],
-        showProperties: ['title', 'excerpt', 'body', 'sourceUrl', 'sourceName', 'isOriginal', 'status', 'imageUrl', 'publishedAt', 'fetchedAt'],
-        editProperties: ['title', 'excerpt', 'body', 'sourceUrl', 'sourceName', 'isOriginal', 'imageUrl', 'publishedAt', 'status'],
-        properties: {
-          // Поле body — rich-text через quill (тип richtext поддерживается AdminJS v7)
-          body: {
-            type: 'richtext',
-            isVisible: { list: false, show: true, edit: true, filter: false },
-            props: {
-              quill: {
-                theme: 'snow',
-                modules: {
-                  toolbar: [
-                    [{ header: [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    ['blockquote', 'code-block'],
-                    [{ list: 'ordered' }, { list: 'bullet' }],
-                    ['link', 'image'],
-                    ['clean'],
-                  ],
-                },
+
+      // ── Аккаунты партнёров ─────────────────────────────────────────────
+      {
+        resource: { model: getModelByName('User'), client: prisma },
+        options: {
+          id: 'PartnerAccounts',
+          navigation: { name: '👥 Партнёры' },
+          listProperties: ['name', 'email', 'phone', 'createdAt'],
+          showProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
+          editProperties: ['name', 'email', 'phone'],
+          filterProperties: ['role'],
+          properties: {
+            name:         { label: 'Название компании / ФИО' },
+            email:        { label: 'Email для входа' },
+            phone:        { label: 'Телефон' },
+            role:         { label: 'Роль', isVisible: { edit: false, list: false, show: true, filter: true } },
+            passwordHash: { isVisible: false },
+            createdAt:    { label: 'Дата регистрации' },
+          },
+          actions: {
+            new:    { isAccessible: isAdmin },
+            delete: { isAccessible: isAdmin },
+            list: {
+              isAccessible: isAdmin,
+              after: async (response: any) => {
+                if (response.records) {
+                  response.records = response.records.filter(
+                    (r: any) => r.params?.role === 'partner',
+                  );
+                }
+                return response;
+              },
+            },
+            // ── Сгенерировать новый пароль ───────────────────────────────
+            resetPassword: {
+              actionType: 'record',
+              label: '🔑 Новый пароль',
+              icon: 'Key',
+              isVisible: (ctx: any) => ctx.record?.params?.role === 'partner',
+              handler: async (_req: any, _res: any, context: any) => {
+                const { record, currentAdmin } = context;
+                const newPassword = Math.random().toString(36).slice(2, 10);
+                await prisma.user.update({
+                  where: { id: record.params.id },
+                  data: { passwordHash: await bcrypt.hash(newPassword, 12) },
+                });
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: `Новый пароль: ${newPassword} — скопируйте и передайте партнёру!`,
+                    type: 'success',
+                  },
+                };
               },
             },
           },
-          isOriginal: {
-            isVisible: { list: true, show: true, edit: true, filter: true },
-          },
+        },
+      },
+
+      // ── Профили сервисов ───────────────────────────────────────────────
+      res('ServiceProvider', {
+        navigation: { name: '👥 Партнёры' },
+        listProperties: ['name', 'city', 'isPublished', 'verified', 'isPaidPlacement', 'createdAt'],
+        editProperties: ['name', 'slug', 'tagline', 'description', 'city', 'address',
+          'phone', 'email', 'telegram', 'website', 'logoUrl', 'workingHours',
+          'yearFounded', 'isPaidPlacement', 'verified', 'isPublished'],
+        filterProperties: ['isPublished', 'verified', 'isPaidPlacement', 'city'],
+        properties: {
+          name:            { label: 'Название' },
+          slug:            { label: 'URL (slug)' },
+          tagline:         { label: 'Слоган' },
+          description:     { label: 'Описание' },
+          city:            { label: 'Город' },
+          address:         { label: 'Адрес' },
+          phone:           { label: 'Телефон' },
+          email:           { label: 'Email' },
+          telegram:        { label: 'Telegram' },
+          website:         { label: 'Сайт' },
+          logoUrl:         { label: 'URL логотипа' },
+          workingHours:    { label: 'Часы работы' },
+          yearFounded:     { label: 'Год основания' },
+          isPaidPlacement: { label: '💰 Платное размещение' },
+          verified:        { label: '✅ Верифицирован' },
+          isPublished:     { label: '🌐 Опубликован' },
+          createdAt:       { label: 'Дата создания' },
+        },
+        actions: { delete: { isAccessible: isAdmin } },
+      }),
+
+      // ── Категории сервисов ─────────────────────────────────────────────
+      res('ServiceCategory', {
+        navigation: { name: '👥 Партнёры' },
+        properties: {
+          name: { label: 'Название категории' },
+          slug: { label: 'URL-идентификатор' },
+          icon: { label: 'Иконка (emoji или название)' },
         },
         actions: {
-          // Создать можно — для оригинальных материалов редакции
-          new: {
-            isAccessible: isAdmin,
-            before: async (request: any) => {
-              if (request.payload) {
-                request.payload.isOriginal = true;
-                request.payload.sourceName = request.payload.sourceName || 'proev.ru';
-                request.payload.sourceUrl = request.payload.sourceUrl || `https://proev.ru/news/${Date.now()}`;
-              }
-              return request;
-            },
+          new:    { isAccessible: isAdmin },
+          edit:   { isAccessible: isAdmin },
+          delete: { isAccessible: isAdmin },
+        },
+      }),
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // ЗАЯВКИ (CRM)
+      // ═══════════════════════════════════════════════════════════════════════
+
+      res('Lead', {
+        navigation: { name: '📩 Заявки' },
+        listProperties: ['name', 'phone', 'status', 'providerId', 'createdAt'],
+        showProperties: ['name', 'phone', 'message', 'status', 'partnerNote', 'nextFollowUp', 'providerId', 'createdAt', 'updatedAt'],
+        editProperties: ['status', 'partnerNote', 'nextFollowUp'],
+        filterProperties: ['status', 'providerId'],
+        properties: {
+          name:         { label: 'Имя клиента' },
+          phone:        { label: 'Телефон' },
+          message:      { label: 'Сообщение клиента' },
+          status:       { label: 'Статус',
+            availableValues: [
+              { value: 'new',       label: '🔵 Новая' },
+              { value: 'contacted', label: '🟡 Связались' },
+              { value: 'qualified', label: '🟣 Квалификация' },
+              { value: 'proposal',  label: '🟠 Предложение' },
+              { value: 'converted', label: '🟢 Клиент' },
+              { value: 'rejected',  label: '⚫ Отказ' },
+            ],
           },
-          edit: { isAccessible: ({ currentAdmin }: any) => ['admin', 'moderator'].includes(currentAdmin?.role) },
+          partnerNote:  { label: 'Заметка партнёра' },
+          nextFollowUp: { label: 'Следующий контакт' },
+          providerId:   { label: 'ID сервиса' },
+          createdAt:    { label: 'Получена' },
+          updatedAt:    { label: 'Обновлена' },
+        },
+        actions: {
+          new:    { isAccessible: () => false },
+          delete: { isAccessible: isAdmin },
+        },
+      }),
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // КАРТА И СТАНЦИИ
+      // ═══════════════════════════════════════════════════════════════════════
+
+      res('ChargingStation', {
+        navigation: { name: '⚡ Карта' },
+        listProperties: ['name', 'city', 'status', 'network', 'verified', 'updatedAt'],
+        editProperties: ['name', 'address', 'city', 'latitude', 'longitude',
+          'connectors', 'powerKw', 'status', 'network', 'verified'],
+        filterProperties: ['status', 'verified', 'network', 'city'],
+        properties: {
+          name:       { label: 'Название' },
+          address:    { label: 'Адрес' },
+          city:       { label: 'Город' },
+          latitude:   { label: 'Широта' },
+          longitude:  { label: 'Долгота' },
+          connectors: { label: 'Типы разъёмов' },
+          powerKw:    { label: 'Мощность (кВт)' },
+          network:    { label: 'Сеть/оператор' },
+          status:     { label: 'Статус',
+            availableValues: [
+              { value: 'available', label: '🟢 Работает' },
+              { value: 'occupied',  label: '🟡 Занята' },
+              { value: 'broken',    label: '🔴 Неисправна' },
+              { value: 'unknown',   label: '⚪ Неизвестно' },
+            ],
+          },
+          verified:        { label: '✅ Верифицирована' },
+          externalId:      { label: 'Внешний ID (OCPI)', isVisible: { list: false, show: true, edit: false, filter: false } },
+          lastStatusUpdate:{ label: 'Обновлён статус' },
+          createdAt:       { label: 'Добавлена' },
+        },
+        actions: { delete: { isAccessible: isAdmin }, bulkDelete: { isAccessible: isAdmin } },
+      }),
+
+      res('StationReview', {
+        navigation: { name: '⚡ Карта' },
+        listProperties: ['stationId', 'statusReport', 'comment', 'createdAt'],
+        properties: {
+          statusReport: { label: 'Статус',
+            availableValues: [
+              { value: 'available', label: '🟢 Работает' },
+              { value: 'occupied',  label: '🟡 Занята' },
+              { value: 'broken',    label: '🔴 Неисправна' },
+            ],
+          },
+          stationId: { label: 'Станция' },
+          comment:   { label: 'Комментарий' },
+          createdAt: { label: 'Дата' },
+        },
+        actions: { delete: { isAccessible: isAdmin } },
+      }),
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // КОНТЕНТ
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // ── Источники новостей ─────────────────────────────────────────────
+      res('NewsSource', {
+        navigation: { name: '📰 Контент' },
+        listProperties: ['name', 'feedUrl', 'isEnabled', 'lastFetchedAt', 'lastError'],
+        editProperties: ['name', 'feedUrl', 'isEnabled'],
+        properties: {
+          name:          { label: 'Название источника' },
+          feedUrl:       { label: 'URL RSS-ленты' },
+          isEnabled:     { label: '✅ Включён' },
+          lastFetchedAt: { label: 'Последний парсинг', isVisible: { list: true, show: true, edit: false, filter: false } },
+          lastError:     { label: 'Последняя ошибка', isVisible: { list: true, show: true, edit: false, filter: false } },
+        },
+      }),
+
+      // ── Новости ────────────────────────────────────────────────────────
+      res('NewsItem', {
+        navigation: { name: '📰 Контент' },
+        listProperties: ['title', 'sourceName', 'status', 'publishedAt'],
+        filterProperties: ['status', 'sourceName'],
+        showProperties: ['title', 'excerpt', 'sourceUrl', 'sourceName', 'status', 'imageUrl', 'publishedAt', 'fetchedAt'],
+        editProperties: ['title', 'excerpt', 'sourceUrl', 'sourceName', 'imageUrl', 'publishedAt', 'status'],
+        properties: {
+          title:       { label: 'Заголовок' },
+          excerpt:     { label: 'Анонс' },
+          sourceUrl:   { label: 'Ссылка на источник' },
+          sourceName:  { label: 'Источник' },
+          imageUrl:    { label: 'URL картинки' },
+          publishedAt: { label: 'Дата публикации' },
+          fetchedAt:   { label: 'Получена', isVisible: { list: false, show: true, edit: false, filter: false } },
+          status:      { label: 'Статус',
+            availableValues: [
+              { value: 'pending',  label: '⏳ На модерации' },
+              { value: 'approved', label: '✅ Опубликована' },
+              { value: 'rejected', label: '❌ Отклонена' },
+            ],
+          },
+          body: { isVisible: false },
+        },
+        actions: {
+          edit:   { isAccessible: isMod },
           delete: { isAccessible: isAdmin },
           bulkDelete: { isAccessible: isAdmin },
-          // Одобрить — кнопка на карточке записи
           approve: {
             actionType: 'record',
-            label: '✓ Одобрить',
-            icon: 'Check',
-            isVisible: (ctx: any) => ctx.record?.params?.status === 'pending' || ctx.record?.params?.status === 'rejected',
-            handler: async (request: any, response: any, context: any) => {
+            label: '✅ Одобрить',
+            isVisible: (ctx: any) => ['pending', 'rejected'].includes(ctx.record?.params?.status),
+            handler: async (_req: any, _res: any, context: any) => {
               const { record, currentAdmin } = context;
-              await prisma.newsItem.update({
-                where: { id: record.params.id },
-                data: { status: 'approved' },
-              });
-              return {
-                record: record.toJSON(currentAdmin),
-                notice: { message: 'Новость одобрена и опубликована', type: 'success' },
-                redirectUrl: `/admin/resources/NewsItem`,
-              };
+              await prisma.newsItem.update({ where: { id: record.params.id }, data: { status: 'approved' } });
+              return { record: record.toJSON(currentAdmin), notice: { message: 'Новость опубликована', type: 'success' } };
             },
           },
-          // Отклонить — кнопка на карточке записи
           reject: {
             actionType: 'record',
-            label: '✗ Отклонить',
-            icon: 'X',
-            isVisible: (ctx: any) => ctx.record?.params?.status === 'pending' || ctx.record?.params?.status === 'approved',
-            handler: async (request: any, response: any, context: any) => {
+            label: '❌ Отклонить',
+            isVisible: (ctx: any) => ['pending', 'approved'].includes(ctx.record?.params?.status),
+            handler: async (_req: any, _res: any, context: any) => {
               const { record, currentAdmin } = context;
-              await prisma.newsItem.update({
-                where: { id: record.params.id },
-                data: { status: 'rejected' },
-              });
-              return {
-                record: record.toJSON(currentAdmin),
-                notice: { message: 'Новость отклонена', type: 'info' },
-                redirectUrl: `/admin/resources/NewsItem`,
-              };
+              await prisma.newsItem.update({ where: { id: record.params.id }, data: { status: 'rejected' } });
+              return { record: record.toJSON(currentAdmin), notice: { message: 'Новость отклонена', type: 'info' } };
             },
           },
         },
       }),
-      // ── Настройки карты ─────────────────────────────────────────────────
-      // Отдельный визуальный раздел — только запись map_provider.
-      // Поле apiKey здесь — это выбор провайдера через выпадающий список,
-      // не секретный ключ: 'osm' | 'yandex' | '2gis'.
+
+      // ── Блог партнёров ─────────────────────────────────────────────────
+      res('ProviderPost', {
+        navigation: { name: '📰 Контент' },
+        listProperties: ['title', 'providerId', 'isPublished', 'publishedAt', 'createdAt'],
+        filterProperties: ['isPublished', 'providerId'],
+        properties: {
+          title:       { label: 'Заголовок' },
+          excerpt:     { label: 'Анонс' },
+          coverUrl:    { label: 'URL обложки' },
+          isPublished: { label: '🌐 Опубликована' },
+          publishedAt: { label: 'Дата публикации' },
+          providerId:  { label: 'ID партнёра' },
+          content:     { isVisible: false },
+          slug:        { isVisible: { list: false, show: true, edit: false, filter: false } },
+        },
+        actions: {
+          new:    { isAccessible: () => false },
+          delete: { isAccessible: isAdmin },
+        },
+      }),
+
+      // ── Отзывы на партнёров ────────────────────────────────────────────
+      res('ProviderReview', {
+        navigation: { name: '📰 Контент' },
+        listProperties: ['providerId', 'rating', 'text', 'createdAt'],
+        filterProperties: ['providerId', 'rating'],
+        properties: {
+          providerId: { label: 'ID партнёра' },
+          rating:     { label: 'Оценка (1–5)' },
+          text:       { label: 'Текст отзыва' },
+          createdAt:  { label: 'Дата' },
+        },
+        actions: {
+          new:    { isAccessible: () => false },
+          delete: { isAccessible: isAdmin },
+        },
+      }),
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // ПОЛЬЗОВАТЕЛИ
+      // ═══════════════════════════════════════════════════════════════════════
+
+      {
+        resource: { model: getModelByName('User'), client: prisma },
+        options: {
+          navigation: { name: '👤 Пользователи' },
+          listProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
+          showProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
+          filterProperties: ['role'],
+          editProperties: ['name', 'email', 'role', 'phone'],
+          properties: {
+            passwordHash: { isVisible: false },
+            resetToken:   { isVisible: false },
+            resetTokenExpiry: { isVisible: false },
+            name:         { label: 'Имя / Компания' },
+            email:        { label: 'Email' },
+            phone:        { label: 'Телефон' },
+            role:         { label: 'Роль',
+              availableValues: [
+                { value: 'user',      label: 'Пользователь' },
+                { value: 'partner',   label: 'Партнёр' },
+                { value: 'moderator', label: 'Модератор' },
+                { value: 'admin',     label: 'Администратор' },
+              ],
+            },
+            createdAt:    { label: 'Зарегистрирован' },
+          },
+          actions: {
+            list: { isAccessible: isAdmin },
+            show: { isAccessible: isAdmin },
+            new:  { isAccessible: isAdmin },
+            edit: { isAccessible: isAdmin },
+            delete: { isAccessible: isAdmin },
+            bulkDelete: { isAccessible: isAdmin },
+            changePassword: {
+              actionType: 'record',
+              label: '🔑 Сгенерировать пароль',
+              icon: 'Key',
+              isVisible: isAdmin,
+              handler: async (_req: any, _res: any, context: any) => {
+                const { record, currentAdmin } = context;
+                const newPassword = Math.random().toString(36).slice(2, 10) +
+                  Math.random().toString(36).slice(2, 6).toUpperCase();
+                await prisma.user.update({
+                  where: { id: record.params.id },
+                  data: { passwordHash: await bcrypt.hash(newPassword, 12) },
+                });
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: `Новый пароль: ${newPassword} — показывается один раз, скопируйте!`,
+                    type: 'success',
+                  },
+                };
+              },
+            },
+          },
+        },
+      },
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // ИНТЕГРАЦИИ
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // ── Провайдер карты (отдельно — выпадающий список) ─────────────────
       {
         resource: { model: getModelByName('Integration'), client: prisma },
         options: {
-          id: 'MapSettings',          // уникальный id чтобы AdminJS не путал с основным Integration
-          navigation: { name: 'Настройки', icon: 'Map' },
-          listProperties: ['name', 'apiKey'],
+          id: 'MapProvider',
+          navigation: { name: '🔌 Интеграции' },
+          listProperties: ['name', 'apiKey', 'updatedAt'],
           editProperties: ['apiKey'],
           showProperties: ['name', 'apiKey', 'updatedAt'],
           filterProperties: [],
           properties: {
-            apiKey: {
-              label: 'Провайдер карты',
+            name:      { label: 'Настройка', isVisible: { list: true, show: true, edit: false, filter: false } },
+            apiKey:    { label: 'Провайдер карты',
               availableValues: [
-                { value: 'osm',    label: '🗺️  OpenStreetMap (бесплатно)' },
-                { value: 'yandex', label: '🟡 Яндекс.Карты' },
-                { value: '2gis',   label: '🟢 2GIS' },
+                { value: 'osm',    label: '🗺️  OpenStreetMap (бесплатно, по умолчанию)' },
+                { value: 'yandex', label: '🟡 Яндекс.Карты (нужен API-ключ в строке ниже)' },
+                { value: '2gis',   label: '🟢 2GIS (нужен API-ключ)' },
               ],
-              isVisible: { list: true, show: true, edit: true, filter: false },
             },
-            name:      { isVisible: { list: true, show: true, edit: false, filter: false } },
-            key:       { isVisible: false },
-            isEnabled: { isVisible: false },
-            extraConfig: { isVisible: false },
-            createdAt: { isVisible: false },
-            updatedAt: { isVisible: { list: false, show: true, edit: false, filter: false } },
+            key:        { isVisible: false },
+            isEnabled:  { isVisible: false },
+            value:      { isVisible: false },
+            extraConfig:{ isVisible: false },
+            lastFetchedAt: { isVisible: false },
+            lastError:  { isVisible: false },
+            createdAt:  { isVisible: false },
+            updatedAt:  { label: 'Обновлено', isVisible: { list: true, show: true, edit: false, filter: false } },
           },
           actions: {
-            // Показываем ТОЛЬКО запись map_provider
             list: {
               isAccessible: isAdmin,
               before: async (request: any) => {
@@ -445,41 +631,67 @@ async function mountAdmin(app: any) {
             },
             show:   { isAccessible: isAdmin },
             edit:   { isAccessible: isAdmin },
-            new:    { isAccessible: () => false },    // нельзя создавать — только редактировать
+            new:    { isAccessible: () => false },
             delete: { isAccessible: () => false },
             bulkDelete: { isAccessible: () => false },
           },
         },
       },
 
-      // ── API-ключи внешних сервисов ───────────────────────────────────────
-      // Все интеграции кроме map_provider — ключи OpenChargeMap, Яндекс, 2GIS.
+      // ── Все интеграции (OCPI, API-ключи, сторонние сервисы) ────────────
       {
         resource: { model: getModelByName('Integration'), client: prisma },
         options: {
-          id: 'ApiKeys',
-          navigation: { name: 'Настройки', icon: 'Key' },
-          listProperties: ['name', 'isEnabled', 'updatedAt'],
-          editProperties: ['name', 'apiKey', 'isEnabled'],
-          showProperties: ['name', 'apiKey', 'isEnabled', 'updatedAt'],
+          id: 'Integrations',
+          navigation: { name: '🔌 Интеграции' },
+          listProperties: ['name', 'key', 'isEnabled', 'lastFetchedAt', 'lastError'],
+          showProperties: ['name', 'key', 'apiKey', 'value', 'isEnabled', 'lastFetchedAt', 'lastError', 'updatedAt'],
+          editProperties: ['name', 'key', 'apiKey', 'value', 'isEnabled'],
+          filterProperties: ['isEnabled'],
           properties: {
-            apiKey: {
-              label: 'API-ключ / токен',
-              isVisible: { list: false, show: true, edit: true, filter: false },
+            name: {
+              label: 'Название',
+              description: 'Понятное название: "OCPI: Electro.cars", "OpenChargeMap API", "Яндекс.Карты"',
             },
-            key:        { isVisible: false },
+            key: {
+              label: 'Системный ключ (key)',
+              description: 'Уникальный идентификатор. Для OCPI-партнёров: ocpi_partner_XXX. Для API: openchargemap, yandex_maps',
+            },
+            apiKey: {
+              label: 'API-ключ / Токен',
+              description: 'Секретный ключ или токен доступа от внешнего сервиса',
+            },
+            value: {
+              label: 'JSON-конфиг (дополнительные настройки)',
+              description: [
+                'Для OCPI-партнёров — JSON с параметрами подключения:',
+                '{"versionsUrl":"https://partner.ru/ocpi/versions","token":"их-токен-к-нам"}',
+                '',
+                'Для Яндекс.Карты Геопоиск — пусто (apiKey достаточно)',
+                'Для 2GIS API — пусто (apiKey достаточно)',
+              ].join('\n'),
+            },
+            isEnabled: {
+              label: '✅ Активна',
+              description: 'Выключите чтобы временно отключить интеграцию без удаления',
+            },
+            lastFetchedAt: {
+              label: 'Последняя синхронизация',
+              isVisible: { list: true, show: true, edit: false, filter: false },
+            },
+            lastError: {
+              label: 'Последняя ошибка',
+              description: 'Заполняется автоматически при ошибке синхронизации',
+              isVisible: { list: true, show: true, edit: false, filter: false },
+            },
             extraConfig: { isVisible: false },
-            createdAt:  { isVisible: false },
+            updatedAt:   { label: 'Обновлено', isVisible: { list: false, show: true, edit: false, filter: false } },
+            createdAt:   { label: 'Создано',   isVisible: { list: false, show: true, edit: false, filter: false } },
           },
           actions: {
-            // Скрываем map_provider из этого раздела
+            // Исключаем map_provider из этого раздела
             list: {
               isAccessible: isAdmin,
-              before: async (request: any) => {
-                // Фильтруем записи — исключаем map_provider
-                request.query = { ...request.query };
-                return request;
-              },
               after: async (response: any) => {
                 if (response.records) {
                   response.records = response.records.filter(
@@ -494,100 +706,43 @@ async function mountAdmin(app: any) {
             new:        { isAccessible: isAdmin },
             delete:     { isAccessible: isAdmin },
             bulkDelete: { isAccessible: isAdmin },
-          },
-        },
-      },
-      // ── Управление пользователями ─────────────────────────────────────────
-      {
-        resource: { model: getModelByName('User'), client: prisma },
-        options: {
-          navigation: { name: 'Пользователи' },
-          listProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
-          showProperties: ['name', 'email', 'role', 'phone', 'createdAt'],
-          filterProperties: ['role'],
-          editProperties: ['name', 'email', 'role', 'phone'],
-          properties: {
-            passwordHash: { isVisible: false },
-            role: {
-              availableValues: [
-                { value: 'user',      label: 'Пользователь' },
-                { value: 'partner',   label: 'Партнёр' },
-                { value: 'moderator', label: 'Модератор' },
-                { value: 'admin',     label: 'Администратор' },
-              ],
-            },
-          },
-          actions: {
-            list:       { isAccessible: isAdmin },
-            show:       { isAccessible: isAdmin },
-            new:        { isAccessible: isAdmin },
-            delete:     { isAccessible: isAdmin },
-            bulkDelete: { isAccessible: isAdmin },
-            edit: {
-              isAccessible: isAdmin,
-              // Стандартное редактирование — имя, email, телефон, роль
-            },
-            // ── Сменить пароль ──────────────────────────────────────────────
-            changePassword: {
+            // ── Запустить OCPI синхронизацию ──────────────────────────────
+            syncOcpi: {
               actionType: 'record',
-              label: '🔑 Сменить пароль',
-              icon: 'Key',
-              isVisible: isAdmin,
-              handler: async (request: any, response: any, context: any) => {
+              label: '🔄 Синхронизировать OCPI',
+              icon: 'Refresh',
+              isVisible: (ctx: any) => ctx.record?.params?.key?.startsWith('ocpi_partner_'),
+              handler: async (_req: any, _res: any, context: any) => {
                 const { record, currentAdmin } = context;
-                const userId = record.params.id;
-
-                // Генерируем новый случайный пароль
-                const newPassword = Math.random().toString(36).slice(2, 10) +
-                                   Math.random().toString(36).slice(2, 6).toUpperCase();
-                const passwordHash = await bcrypt.hash(newPassword, 12);
-
-                await prisma.user.update({
-                  where: { id: userId },
-                  data: { passwordHash },
-                });
-
-                return {
-                  record: record.toJSON(currentAdmin),
-                  notice: {
-                    message: `Новый пароль: ${newPassword} — скопируйте и передайте партнёру. Он показывается только сейчас.`,
-                    type: 'success',
-                  },
-                };
-              },
-            },
-            // ── Установить конкретный пароль (из формы) ─────────────────────
-            setPassword: {
-              actionType: 'record',
-              label: '✏️ Задать пароль',
-              icon: 'Edit',
-              isVisible: isAdmin,
-              handler: async (request: any, response: any, context: any) => {
-                const { record, currentAdmin, h } = context;
-                // Пароль берём из query-параметра или payload
-                const newPassword = request.query?.password || request.payload?.password;
-                if (!newPassword || newPassword.length < 6) {
+                const key: string = record.params.key;
+                const partnerId = key.replace('ocpi_partner_', '');
+                try {
+                  const apiUrl = process.env.API_URL || 'http://localhost:3001';
+                  const res = await fetch(`${apiUrl}/api/ocpi/admin/sync/${partnerId}`, {
+                    method: 'POST',
+                  });
+                  const data = await res.json();
                   return {
                     record: record.toJSON(currentAdmin),
-                    notice: { message: 'Укажите пароль в URL: ?password=НовыйПароль (минимум 6 символов)', type: 'error' },
+                    notice: {
+                      message: data.message || `Синхронизировано: ${data.locations} станций`,
+                      type: 'success',
+                    },
+                  };
+                } catch (err) {
+                  return {
+                    record: record.toJSON(currentAdmin),
+                    notice: { message: `Ошибка: ${(err as Error).message}`, type: 'error' },
                   };
                 }
-                const passwordHash = await bcrypt.hash(newPassword, 12);
-                await prisma.user.update({
-                  where: { id: record.params.id },
-                  data: { passwordHash },
-                });
-                return {
-                  record: record.toJSON(currentAdmin),
-                  notice: { message: `Пароль установлен: ${newPassword}`, type: 'success' },
-                };
               },
             },
           },
         },
       },
-    ],
-  });
+
+    ], // end resources
+  }); // end new AdminJS
 
   await admin.initialize?.();
 
