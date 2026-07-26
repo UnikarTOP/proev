@@ -526,6 +526,16 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
                   <span>{provider.workingHours}</span>
                 </div>
               )}
+              {provider.address && (
+                <a
+                  href={`https://yandex.ru/maps/?text=${encodeURIComponent(`${provider.city || ''} ${provider.address}`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-volt-600 hover:underline underline-offset-2 mt-1"
+                >
+                  <i className="ti ti-route text-xs" aria-hidden="true" />
+                  Построить маршрут
+                </a>
+              )}
             </div>
 
             <div className="mt-4 space-y-2">

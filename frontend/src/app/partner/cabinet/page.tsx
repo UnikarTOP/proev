@@ -506,7 +506,7 @@ function SettingsSection({ me, provider, token, onSave, saving }: { me: Me; prov
         <div className="space-y-3">
           <Field label="Email (логин)">
             <input value={me.email} readOnly className={`${inp} bg-paper-50 text-muted cursor-not-allowed`} />
-            <p className="text-xs text-muted mt-1">Для смены email обратитесь на <a href="mailto:partners@proev.ru" className="text-volt-600 underline underline-offset-2">partners@proev.ru</a></p>
+            <p className="text-xs text-muted mt-1">Для смены email обратитесь на <a href="mailto:hello@proev.ru" className="text-volt-600 underline underline-offset-2">hello@proev.ru</a></p>
           </Field>
         </div>
       </Card>
@@ -547,7 +547,7 @@ function SettingsSection({ me, provider, token, onSave, saving }: { me: Me; prov
           </div>
           {!provider.isPaidPlacement && (
             <p className="text-sm text-muted">Обновитесь до тарифа Партнёр — карточка показывается первой и выделяется синей рамкой.{' '}
-              <a href="mailto:partners@proev.ru" className="text-volt-600 underline underline-offset-2">Написать нам</a>
+              <a href="mailto:hello@proev.ru" className="text-volt-600 underline underline-offset-2">Написать нам</a>
             </p>
           )}
         </div>
@@ -814,7 +814,7 @@ export default function CabinetPage() {
               <i className="ti ti-building-store text-4xl text-muted block mb-3 opacity-30" aria-hidden="true" />
               <h2 className="text-base font-semibold text-ink-900 mb-2">Страница ещё не создана</h2>
               <p className="text-sm text-muted mb-4">Администратор создаст страницу после одобрения заявки</p>
-              <a href="mailto:partners@proev.ru" className="text-sm text-volt-600 underline underline-offset-2">partners@proev.ru</a>
+              <a href="mailto:hello@proev.ru" className="text-sm text-volt-600 underline underline-offset-2">hello@proev.ru</a>
             </div>
           ) : (
             <>

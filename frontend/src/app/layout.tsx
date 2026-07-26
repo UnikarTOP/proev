@@ -27,8 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             <div className="flex items-center gap-3">
-              <a href="/services" className="bg-ink-900 text-white text-sm font-semibold px-4 py-2.5 rounded-[10px] whitespace-nowrap hidden sm:block">
-                Оставить заявку
+              <a href="/partner" className="bg-ink-900 text-white text-sm font-semibold px-4 py-2.5 rounded-[10px] whitespace-nowrap hidden sm:block">
+                Разместить сервис
               </a>
             </div>
           </nav>
@@ -102,8 +102,9 @@ function MobileMenu() {
         <a href="/charge-map" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Карта зарядок</a>
         <a href="/services" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Сервисы</a>
         <a href="/news" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Новости</a>
-        <a href="/partner" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Партнёрам</a>
-        <a href="/services" className="px-4 py-3 text-sm font-semibold text-volt-600 hover:bg-paper-50">Оставить заявку</a>
+        <a href="/about" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">О проекте</a>
+        <a href="/pricing" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Тарифы</a>
+        <a href="/partner" className="px-4 py-3 text-sm font-semibold text-volt-600 hover:bg-paper-50">Разместить сервис</a>
       </div>
     </div>
   );

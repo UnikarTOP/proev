@@ -104,7 +104,7 @@ function ServicesContent() {
           <p className="text-muted text-sm mb-2">Партнёров пока нет в этой категории.</p>
           <p className="text-muted text-sm">
             Хотите разместить свой сервис?{' '}
-            <a href="mailto:partners@proev.ru" className="text-volt-600 underline underline-offset-2">Напишите нам</a>
+            <a href="mailto:hello@proev.ru" className="text-volt-600 underline underline-offset-2">Напишите нам</a>
           </p>
         </div>
       ) : (
@@ -121,7 +121,7 @@ function ServicesContent() {
             Получайте заявки от владельцев электромобилей. Бесплатное базовое размещение.
           </p>
         </div>
-        <a href="mailto:partners@proev.ru"
+        <a href="mailto:hello@proev.ru"
           className="shrink-0 px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
           style={{ background: '#3DDBFF', color: '#0B1220' }}>
           Стать партнёром →
