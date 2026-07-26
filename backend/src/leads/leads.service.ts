@@ -1,15 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 
 @Injectable()
 export class LeadsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
-  create(dto: CreateLeadDto, userId?: string) {
-    return this.prisma.lead.create({
+  async create(dto: CreateLeadDto, userId?: string) {
+    const lead = await this.prisma.lead.create({
       data: { ...dto, userId, status: 'new' },
     });
+    // Отправляем email партнёру и триггерим вебхуки асинхронно
+    this.notifications.notifyPartnerNewLead(lead.id).catch(() => {});
+    return lead;
   }
 
   async findByProvider(providerId: string) {
@@ -36,14 +43,12 @@ export class LeadsService {
         include: { history: { orderBy: { createdAt: 'asc' } } },
       }),
       this.prisma.leadHistory.create({
-        data: {
-          leadId,
-          fromStatus: lead.status,
-          toStatus: toStatus as any,
-          note,
-        },
+        data: { leadId, fromStatus: lead.status, toStatus: toStatus as any, note },
       }),
     ]);
+
+    // Уведомляем через вебхук об изменении статуса
+    this.notifications.notifyLeadStatusChanged(leadId, lead.status, toStatus).catch(() => {});
 
     return updated;
   }

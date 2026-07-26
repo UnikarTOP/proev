@@ -162,6 +162,8 @@ model ServiceProvider {
   leads          Lead[]
   reviews        ProviderReview[]
   posts          ProviderPost[]
+  webhooks       Webhook[]
+  apiKeys        ApiKey[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -300,4 +302,31 @@ model NewsItem {
 
   @@index([publishedAt])
   @@index([status])
+}
+
+// Вебхуки — партнёр указывает URL, система отправляет POST при событиях
+model Webhook {
+  id          String   @id @default(uuid())
+  providerId  String
+  provider    ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  url         String
+  secret      String   // HMAC-SHA256 подпись для верификации
+  events      String[] // ['lead.created', 'lead.status_changed', 'review.created']
+  isActive    Boolean  @default(true)
+  lastError   String?
+  lastTriggeredAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// API-ключи для внешних интеграций (amoCRM, Bitrix24, и т.д.)
+model ApiKey {
+  id          String   @id @default(uuid())
+  providerId  String
+  provider    ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  name        String   // "Мой amoCRM", "Telegram бот"
+  key         String   @unique // pk_live_xxxxx
+  scopes      String[] // ['leads:read', 'leads:write', 'provider:read']
+  isActive    Boolean  @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
 }

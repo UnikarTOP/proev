@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import CrmLeads from '@/components/CrmLeads';
 import PartnerBlog from '@/components/PartnerBlog';
+import PartnerApiSection from '@/components/PartnerApiSection';
 
 interface Provider {
   id: string; name: string; slug: string; tagline?: string;
@@ -31,7 +32,7 @@ interface Me {
   provider: Provider | null;
 }
 
-type Section = 'overview' | 'page' | 'leads' | 'reviews' | 'blog' | 'settings';
+type Section = 'overview' | 'page' | 'leads' | 'reviews' | 'blog' | 'api' | 'settings';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -712,6 +713,7 @@ export default function CabinetPage() {
     { id: 'reviews', label: 'Отзывы', icon: 'ti-star' },
     { id: 'settings', label: 'Настройки', icon: 'ti-settings' },
     { id: 'blog', label: 'Блог', icon: 'ti-news' },
+    { id: 'api', label: 'API и интеграции', icon: 'ti-api' },
   ];
 
   return (
@@ -824,6 +826,7 @@ export default function CabinetPage() {
               {section === 'reviews' && <ReviewsSection reviews={reviews} provider={p} />}
               {section === 'settings' && <SettingsSection me={me} provider={p} token={token} onSave={save} saving={saving} />}
               {section === 'blog' && token && <PartnerBlog token={token} />}
+              {section === 'api' && token && <PartnerApiSection token={token} />}
             </>
           )}
         </main>

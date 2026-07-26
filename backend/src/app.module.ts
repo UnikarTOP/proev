@@ -10,6 +10,8 @@ import { NewsModule } from './news/news.module';
 import { PartnersModule } from './partners/partners.module';
 import { UploadModule } from './upload/upload.module';
 import { ProviderBlogModule } from './provider-blog/provider-blog.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PublicApiModule } from './public-api/public-api.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { ProviderBlogModule } from './provider-blog/provider-blog.module';
     PartnersModule,
     UploadModule,
     ProviderBlogModule,
+    NotificationsModule,
+    PublicApiModule,
   ],
 })
 export class AppModule {}
