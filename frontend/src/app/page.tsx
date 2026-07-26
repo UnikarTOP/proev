@@ -1,4 +1,5 @@
 import { RouteStrip } from '@/components/RouteStrip';
+import HomeNews from '@/components/HomeNews';
 import { apiGet, type StationStats } from '@/lib/api';
 import HomeNews from '@/components/HomeNews';
 
@@ -74,6 +75,8 @@ export default async function HomePage() {
       </div>
 
       {/* НОВОСТИ */}
+      <HomeNews />
+
       <HomeNews />
 
       {/* STATS */}
