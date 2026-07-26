@@ -57,7 +57,7 @@ export class UploadController {
 
     if (!file) throw new BadRequestException('Файл не получен');
 
-    const siteUrl = process.env.SITE_URL || 'https://proev.ru';
+    const siteUrl = process.env.API_URL || process.env.SITE_URL?.replace('proev.ru', 'api.proev.ru') || 'https://api.proev.ru';
     const url = `${siteUrl}/uploads/${file.filename}`;
 
     return { ok: true, url, filename: file.filename };

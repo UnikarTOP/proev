@@ -31,3 +31,7 @@ body {
 .prose img { border-radius: 10px; max-width: 100%; height: auto; margin: 1rem 0; }
 .prose hr { border: none; border-top: 0.5px solid #DCE1E8; margin: 1.5rem 0; }
 .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #B4B2A9; float: left; pointer-events: none; }
+
+/* ── Адаптивная карта ──────────────────────────────────────── */
+.map-container { height: 560px !important; }
+@media (max-width: 767px) { .map-container { height: 400px !important; } }

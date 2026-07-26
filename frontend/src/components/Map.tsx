@@ -274,8 +274,8 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
       <div className="flex flex-col-reverse md:flex-row gap-4">
         <div
           ref={containerRef}
-          className="flex-1 rounded-xl overflow-hidden border border-line"
-          style={{ height: typeof window !== 'undefined' && window.innerWidth < 768 ? 400 : 560 }}
+          className="flex-1 rounded-xl overflow-hidden border border-line map-container"
+          style={{ height: 560 }}
         />
 
         {selected && (

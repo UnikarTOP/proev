@@ -242,11 +242,11 @@ function LeadDetail({ lead, onStatusChange, onNoteChange, onClose }: {
         </button>
 
         {/* История изменений */}
-        {lead.history.length > 0 && (
+        {(lead.history || []).length > 0 && (
           <div>
             <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">История</p>
             <div className="space-y-2">
-              {[...lead.history].reverse().map(h => {
+              {[...(lead.history || [])].reverse().map(h => {
                 const toStage = STAGE_MAP[h.toStatus];
                 const fromStage = h.fromStatus ? STAGE_MAP[h.fromStatus] : null;
                 return (

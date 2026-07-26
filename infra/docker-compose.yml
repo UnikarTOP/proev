@@ -41,6 +41,7 @@ services:
       OCM_API_KEY: ${OCM_API_KEY}
       DATA_MOS_API_KEY: ${DATA_MOS_API_KEY}
       SITE_URL: ${SITE_URL:-https://proev.ru}
+      API_URL: ${API_URL:-https://api.proev.ru}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_USER: ${SMTP_USER}
