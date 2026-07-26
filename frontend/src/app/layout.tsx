@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import MobileNav from '@/components/MobileNav';
 
 export const metadata: Metadata = {
   title: 'proev.ru — всё для владельцев электромобилей в России',
@@ -28,18 +29,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/services" className="bg-ink-900 text-white text-sm font-semibold px-4 py-2.5 rounded-[10px] whitespace-nowrap hidden sm:block">
                 Оставить заявку
               </a>
-              {/* Мобильное меню — бургер */}
-              <MobileMenu />
             </div>
           </nav>
         </header>
 
         <main>{children}</main>
 
-        <footer className="border-t border-line mt-16">
+        <MobileNav />
+
+        <footer className="border-t border-line mt-16 mb-20 md:mb-0">
           <div className="max-w-[1120px] mx-auto px-4 md:px-6 py-8">
-            {/* Мобильные ссылки в футере */}
-            <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm text-muted mb-6">
+            <div className="hidden md:flex flex-wrap gap-4 text-sm text-muted mb-6">
               <a href="/charge-map" className="hover:text-ink-900 transition-colors">Карта зарядок</a>
               <a href="/services" className="hover:text-ink-900 transition-colors">Сервисы</a>
               <a href="/news" className="hover:text-ink-900 transition-colors">Новости</a>
