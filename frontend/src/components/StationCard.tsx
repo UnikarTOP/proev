@@ -18,6 +18,8 @@ interface Station {
   name: string;
   address?: string;
   city?: string;
+  latitude?: number;
+  longitude?: number;
   status: 'available' | 'occupied' | 'broken' | 'unknown';
   connectors: string[];
   powerKw?: number;
