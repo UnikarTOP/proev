@@ -94,8 +94,7 @@ export default function PricingPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-14">
         {PLANS.map(plan => (
           <div key={plan.name}
-            className={`rounded-2xl overflow-hidden ${plan.highlight ? 'ring-2' : 'border border-line'}`}
-            style={plan.highlight ? { ringColor: plan.color } : {}}>
+            className={`rounded-2xl overflow-hidden ${plan.highlight ? 'ring-2 ring-[#0BA5CC]' : 'border border-line'}`}>
             {plan.highlight && (
               <div className="py-2 text-center text-xs font-bold text-white" style={{ background: plan.color }}>
                 {plan.badge}
