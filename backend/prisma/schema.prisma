@@ -89,8 +89,9 @@ model ChargingStation {
   status          StationStatus  @default(unknown)
   photos          String[]
   verified        Boolean        @default(false)
-  externalId      String?        @unique // ocpi:electrocars:LOC001
+  externalId      String?        @unique
   lastStatusUpdate DateTime?
+  reportCount     Int            @default(0)  // сколько раз обновляли статус
 
   addedById String?
   addedBy   User?   @relation("AddedStations", fields: [addedById], references: [id])
@@ -107,13 +108,17 @@ model ChargingStation {
 model StationReview {
   id           String        @id @default(uuid())
   stationId    String
-  station      ChargingStation @relation(fields: [stationId], references: [id])
-  userId       String
-  user         User          @relation(fields: [userId], references: [id])
+  station      ChargingStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  userId       String?       // необязательно — анонимные репорты разрешены
+  user         User?         @relation(fields: [userId], references: [id])
   statusReport StationStatus
   comment      String?
   rating       Int?          // 1..5
   photos       String[]
+  // Дополнительные поля для краудсорсинга
+  waitMinutes  Int?          // время ожидания в очереди
+  powerActual  Float?        // реальная мощность зарядки (пользователь замеряет)
+  connectorOk  String?       // какой разъём работал
   createdAt    DateTime      @default(now())
 }
 

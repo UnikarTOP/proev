@@ -1,7 +1,32 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { StationsService } from './stations.service';
-import { CreateStationDto } from './dto/create-station.dto';
-import { CreateReviewDto } from './dto/create-review.dto';
+import { StationsSyncService } from './stations-sync.service';
+
+class ReportStatusDto {
+  @IsEnum(['available', 'occupied', 'broken', 'unknown'])
+  status: string;
+
+  @IsOptional() @IsString()
+  comment?: string;
+
+  @IsOptional() @IsNumber() @Min(1) @Max(5)
+  @Type(() => Number)
+  rating?: number;
+
+  @IsOptional() @IsNumber() @Min(0) @Max(300)
+  @Type(() => Number)
+  waitMinutes?: number;
+
+  @IsOptional() @IsNumber() @Min(1) @Max(500)
+  @Type(() => Number)
+  powerActual?: number;
+
+  @IsOptional() @IsString()
+  connectorOk?: string;
+}
 
 @Controller('stations')
 export class StationsController {
@@ -10,53 +35,49 @@ export class StationsController {
     private readonly syncService: StationsSyncService,
   ) {}
 
+  @SkipThrottle()
   @Get()
-  findAll(@Query('city') city?: string, @Query('connector') connector?: string) {
-    return this.stationsService.findAll({ city, connector });
-  }
-
-  @Get('nearby')
-  findNearby(
-    @Query('lat') lat: string,
-    @Query('lng') lng: string,
+  findAll(
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
     @Query('radius') radius?: string,
+    @Query('status') status?: string,
+    @Query('connector') connector?: string,
+    @Query('city') city?: string,
   ) {
-    return this.stationsService.findNearby(
-      parseFloat(lat),
-      parseFloat(lng),
-      radius ? parseFloat(radius) : undefined,
-    );
+    return this.stationsService.findAll({
+      lat: lat ? parseFloat(lat) : undefined,
+      lng: lng ? parseFloat(lng) : undefined,
+      radius: radius ? parseFloat(radius) : undefined,
+      status, connector, city,
+    });
   }
 
+  @SkipThrottle()
   @Get('stats')
   getStats() {
     return this.stationsService.getStats();
   }
 
+  @SkipThrottle()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.stationsService.findOne(id);
   }
 
-  @Post()
-  create(@Body() dto: CreateStationDto) {
-    // TODO: userId брать из auth-guard, когда появится авторизация
-    return this.stationsService.create(dto);
+  @SkipThrottle()
+  @Get(':id/reviews')
+  getReviews(@Param('id') id: string) {
+    return this.stationsService.getReviews(id);
   }
 
-  @Post(':id/reviews')
-  addReview(@Param('id') id: string, @Body() dto: CreateReviewDto) {
-    // TODO: userId брать из auth-guard
-    return this.stationsService.addReview(id, dto, 'anonymous');
+  // Репорт статуса — 10 в час с одного IP (защита от флуда)
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
+  @Post(':id/report')
+  reportStatus(@Param('id') id: string, @Body() dto: ReportStatusDto) {
+    return this.stationsService.reportStatus(id, dto);
   }
-}
 
-import { StationsSyncService } from './stations-sync.service';
-
-// Добавьте в конструктор: private syncService: StationsSyncService
-// И этот эндпоинт:
-// @Post('sync/osm')
-// syncOsm() { return this.syncService.syncOsm();
   /** POST /api/stations/sync/osm — ручной запуск синхронизации OSM */
   @Post('sync/osm')
   syncOsm() {
