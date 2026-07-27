@@ -13,8 +13,12 @@ export class ServiceProvidersController {
   constructor(private readonly service: ServiceProvidersService) {}
 
   @Get()
-  findAll(@Query('category') category?: string, @Query('city') city?: string) {
-    return this.service.findAll({ categorySlug: category, city });
+  findAll(
+    @Query('category') category?: string,
+    @Query('city') city?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.service.findAll({ categorySlug: category, city, search });
   }
 
   @Get('categories')

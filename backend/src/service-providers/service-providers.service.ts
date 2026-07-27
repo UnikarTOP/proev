@@ -5,16 +5,31 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ServiceProvidersService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(params: { categorySlug?: string; city?: string }) {
+  findAll(params: { categorySlug?: string; city?: string; search?: string }) {
+    const where: any = { isPublished: true };
+
+    if (params.categorySlug) {
+      where.category = { slug: params.categorySlug };
+    }
+    if (params.city) {
+      where.city = { contains: params.city, mode: 'insensitive' };
+    }
+    if (params.search?.trim()) {
+      const q = params.search.trim();
+      where.OR = [
+        { name:        { contains: q, mode: 'insensitive' } },
+        { tagline:     { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { city:        { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
     return this.prisma.serviceProvider.findMany({
-      where: {
-        isPublished: true,
-        city: params.city ? { equals: params.city, mode: 'insensitive' } : undefined,
-        category: params.categorySlug ? { slug: params.categorySlug } : undefined,
-      },
+      where,
       include: { category: true },
       orderBy: [
         { isPaidPlacement: 'desc' },
+        { verified: 'desc' },
         { ratingAvg: 'desc' },
       ],
     });
