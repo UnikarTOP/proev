@@ -51,6 +51,7 @@ services:
       SMTP_FROM: ${SMTP_FROM}
     volumes:
       - uploads_data:/app/uploads
+      - geoip_data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,3 +86,4 @@ networks:
 volumes:
   postgres_data:
   uploads_data:
+  geoip_data:
