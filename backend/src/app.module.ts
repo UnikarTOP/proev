@@ -14,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PublicApiModule } from './public-api/public-api.module';
 import { OcpiModule } from './ocpi/ocpi.module';
 import { GeoipModule } from './geoip/geoip.module';
+import { PagesModule } from './pages/pages.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -45,6 +46,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     PublicApiModule,
     OcpiModule,
     GeoipModule,
+    PagesModule,
   ],
   providers: [
     // Rate limiting применяется глобально

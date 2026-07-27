@@ -817,6 +817,92 @@ async function mountAdmin(app: any) {
         },
       },
 
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // СТРАНИЦЫ САЙТА
+      // ═══════════════════════════════════════════════════════════════════════
+
+      {
+        resource: { model: getModelByName('Page'), client: prisma },
+        options: {
+          navigation: { name: '📄 Страницы' },
+          listProperties: ['title', 'slug', 'isPublished', 'updatedAt'],
+          showProperties: ['title', 'slug', 'description', 'content', 'isPublished', 'updatedAt'],
+          editProperties: ['title', 'slug', 'description', 'content', 'isPublished'],
+          filterProperties: ['isPublished'],
+          properties: {
+            title: {
+              label: 'Заголовок страницы',
+              description: 'Отображается во вкладке браузера и в H1',
+            },
+            slug: {
+              label: 'URL-адрес',
+              description: 'Часть адреса после /: about, pricing, privacy, terms, partner',
+            },
+            description: {
+              label: 'Meta Description (SEO)',
+              description: 'Описание для поисковиков, 150-160 символов',
+            },
+            content: {
+              label: 'Содержимое страницы',
+              type: 'richtext',
+              props: {
+                quill: {
+                  theme: 'snow',
+                  modules: {
+                    toolbar: [
+                      [{ header: [1, 2, 3, false] }],
+                      ['bold', 'italic', 'underline', 'strike'],
+                      [{ color: [] }, { background: [] }],
+                      [{ list: 'ordered' }, { list: 'bullet' }],
+                      [{ align: [] }],
+                      ['link', 'blockquote', 'code-block'],
+                      ['clean'],
+                    ],
+                  },
+                },
+              },
+            },
+            isPublished: {
+              label: '🌐 Опубликована',
+              description: 'Скрытые страницы возвращают 404',
+            },
+            updatedAt: {
+              label: 'Обновлена',
+              isVisible: { list: true, show: true, edit: false, filter: false },
+            },
+            createdAt: {
+              label: 'Создана',
+              isVisible: { list: false, show: true, edit: false, filter: false },
+            },
+          },
+          actions: {
+            new:    { isAccessible: isAdmin },
+            edit:   { isAccessible: isAdmin },
+            delete: { isAccessible: isAdmin },
+            // Кнопка предпросмотра
+            preview: {
+              actionType: 'record',
+              label: '👁 Предпросмотр',
+              icon: 'Eye',
+              isVisible: (ctx: any) => !!ctx.record?.params?.slug,
+              handler: async (_req: any, _res: any, context: any) => {
+                const { record, currentAdmin } = context;
+                const slug = record.params.slug;
+                const siteUrl = process.env.SITE_URL || 'https://proev.ru';
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: `Страница доступна по адресу: ${siteUrl}/${slug}`,
+                    type: 'info',
+                  },
+                };
+              },
+            },
+          },
+        },
+      },
+
     ], // end resources
   }); // end new AdminJS
 

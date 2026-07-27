@@ -1,33 +1,38 @@
+import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: 'Пользовательское соглашение — proev.ru',
-};
+const SLUG = 'terms';
 
-export default function TermsPage() {
+interface PageData { slug: string; title: string; description?: string; content: string; updatedAt: string; }
+
+async function getPage(): Promise<PageData | null> {
+  const api = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:3001/api';
+  try {
+    const res = await fetch(`${api}/pages/${SLUG}`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const data = await getPage();
+  if (!data) return { title: 'proev.ru' };
+  return { title: data.title, description: data.description,
+    openGraph: { title: data.title, description: data.description } };
+}
+
+export default async function StaticPage() {
+  const data = await getPage();
+  if (!data) notFound();
   return (
-    <div className="max-w-[720px] mx-auto px-4 md:px-6 py-10 md:py-16">
-      <h1 className="text-2xl font-bold text-ink-900 mb-2">Пользовательское соглашение</h1>
-      <p className="text-sm text-muted mb-8">Последнее обновление: июль 2026</p>
-
-      <div className="space-y-6 text-sm text-muted leading-relaxed">
-        {[
-          { title: '1. Общие условия', text: 'Используя платформу proev.ru, вы соглашаетесь с настоящим соглашением. Если вы не согласны — пожалуйста, прекратите использование платформы.' },
-          { title: '2. Описание сервиса', text: 'proev.ru предоставляет информационную платформу для владельцев электромобилей: карту зарядных станций, каталог сервисных компаний, агрегатор новостей и инструменты для EV-бизнеса.' },
-          { title: '3. Регистрация партнёров', text: 'Компании могут зарегистрироваться как партнёры для размещения в каталоге. Регистрация требует подтверждения администратором. Мы оставляем за собой право отказать в регистрации без объяснения причин.' },
-          { title: '4. Правила размещения', text: 'Партнёры обязуются размещать достоверную информацию о своих услугах, не вводить пользователей в заблуждение, соблюдать законодательство РФ при работе с заявками клиентов.' },
-          { title: '5. Ответственность', text: 'proev.ru выступает информационным посредником. Мы не несём ответственности за качество услуг партнёров и результат взаимодействия между пользователями и компаниями из каталога.' },
-          { title: '6. Интеллектуальная собственность', text: 'Все материалы платформы защищены авторским правом. Использование логотипа, дизайна и контента proev.ru без разрешения запрещено.' },
-          { title: '7. Изменение условий', text: 'Мы оставляем за собой право изменять настоящее соглашение. Существенные изменения будут доведены до партнёров по email.' },
-          { title: '8. Применимое право', text: 'Настоящее соглашение регулируется законодательством Российской Федерации. Все споры разрешаются в соответствии с действующим законодательством РФ.' },
-          { title: '9. Контакты', text: 'Вопросы по соглашению: hello@proev.ru' },
-        ].map(s => (
-          <section key={s.title}>
-            <h2 className="text-base font-semibold text-ink-900 mb-2">{s.title}</h2>
-            <p>{s.text}</p>
-          </section>
-        ))}
-      </div>
+    <div className="max-w-[800px] mx-auto px-4 md:px-6 py-10 md:py-14">
+      <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: data.content }} />
+      {data.updatedAt && (
+        <p className="text-xs text-muted mt-10 pt-6 border-t border-line">
+          Последнее обновление:{' '}
+          {new Date(data.updatedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
+      )}
     </div>
   );
 }

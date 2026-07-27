@@ -31,7 +31,8 @@
     "nodemailer": "^6.9.14",
     "multer": "^1.4.5-lts.1",
     "@nestjs/jwt": "^10.2.0",
-    "@nestjs/throttler": "^5.1.2"
+    "@nestjs/throttler": "^5.1.2",
+    "@adminjs/custom-component": "*"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",
