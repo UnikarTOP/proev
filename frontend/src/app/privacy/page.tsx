@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
-const SLUG =  + slug + ;
+const SLUG = 'privacy';
 
 interface PageData {
   slug: string; title: string; description?: string;
