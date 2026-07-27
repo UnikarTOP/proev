@@ -162,6 +162,8 @@ model ServiceProvider {
 
   // Модерация и монетизация
   isPaidPlacement Boolean        @default(false)
+  viewCount       Int            @default(0)
+  viewCountWeek   Int            @default(0)
   verified        Boolean        @default(false) // проверен командой proev.ru
   isPublished     Boolean        @default(false) // партнёр опубликовал страницу
   ratingAvg       Float?
