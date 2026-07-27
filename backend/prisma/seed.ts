@@ -463,6 +463,39 @@ async function seedDemoPartner() {
     });
   }
 
+  // ── Создаём таблицу Page если нет и заполняем начальный контент ──────────
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Page" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        slug TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        description TEXT,
+        content TEXT NOT NULL DEFAULT '',
+        "isPublished" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    const pages = [
+      { slug: 'about', title: 'О проекте — proev.ru', description: 'proev.ru — платформа для владельцев электромобилей в России.', content: '<h1>О проекте</h1><p>proev.ru — платформа которая объединяет владельцев электромобилей, зарядную инфраструктуру и сервисные компании в России.</p><h2>Контакты</h2><p>По вопросам сотрудничества: <a href="mailto:hello@proev.ru">hello@proev.ru</a></p>' },
+      { slug: 'pricing', title: 'Тарифы — proev.ru', description: 'Разместите свой EV-сервис бесплатно.', content: '<h1>Тарифы</h1><h2>Базовый — бесплатно</h2><p>Страница в каталоге, форма заявок, CRM, блог до 5 статей.</p><h2>Партнёр — ₽2 900/мес</h2><p>Приоритет в каталоге, бейдж верификации, API, аналитика.</p><h2>Бизнес — ₽7 900/мес</h2><p>Несколько локаций, персональный менеджер.</p>' },
+      { slug: 'privacy', title: 'Политика конфиденциальности — proev.ru', description: 'Политика обработки персональных данных по 152-ФЗ.', content: '<h1>Политика конфиденциальности</h1><p>Обработка персональных данных осуществляется в соответствии с ФЗ № 152-ФЗ.</p><h2>Контакты</h2><p><a href="mailto:privacy@proev.ru">privacy@proev.ru</a></p>' },
+      { slug: 'terms', title: 'Пользовательское соглашение — proev.ru', description: 'Условия использования платформы.', content: '<h1>Пользовательское соглашение</h1><p>Используя платформу proev.ru вы соглашаетесь с условиями настоящего соглашения. Платформа регулируется законодательством РФ.</p><h2>Контакты</h2><p><a href="mailto:hello@proev.ru">hello@proev.ru</a></p>' },
+    ];
+
+    for (const page of pages) {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "Page" (id, slug, title, description, content) VALUES (gen_random_uuid()::text, $1, $2, $3, $4) ON CONFLICT (slug) DO NOTHING`,
+        page.slug, page.title, page.description, page.content
+      );
+    }
+    console.log('Страницы сайта: 4 шт. готовы');
+  } catch (e: any) {
+    console.warn('Страницы:', e.message);
+  }
+
   console.log('Демо-партнёр EV Service создан → /services/ev-service-demo');
 
   // Добавляем демо-статьи блога если их ещё нет

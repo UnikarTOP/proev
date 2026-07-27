@@ -822,8 +822,10 @@ async function mountAdmin(app: any) {
       // СТРАНИЦЫ САЙТА
       // ═══════════════════════════════════════════════════════════════════════
 
-      {
-        resource: { model: getModelByName('Page'), client: prisma },
+      ...(() => {
+        try {
+          return [{
+            resource: { model: getModelByName('Page'), client: prisma },
         options: {
           navigation: { name: '📄 Страницы' },
           listProperties: ['title', 'slug', 'isPublished', 'updatedAt'],
@@ -901,7 +903,12 @@ async function mountAdmin(app: any) {
             },
           },
         },
-      },
+      }];
+        } catch (e) {
+          console.warn('AdminJS: модель Page не найдена в Prisma client — таблица не создана или не выполнен prisma generate');
+          return [];
+        }
+      })(),
 
     ], // end resources
   }); // end new AdminJS
