@@ -16,11 +16,13 @@ import { OcpiModule } from './ocpi/ocpi.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     // Rate limiting: 20 запросов / 60 секунд глобально
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     // JWT — глобальный модуль
     JwtModule.register({

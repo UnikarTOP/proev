@@ -176,7 +176,7 @@ export default function NewsPageClient() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const api = process.env.NEXT_PUBLIC_API_URL || '/api';
     fetch(`${api}/news?limit=100`)
       .then((r) => r.json())
       .then((data) => { setNews(data); setLoading(false); })

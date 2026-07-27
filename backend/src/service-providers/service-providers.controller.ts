@@ -24,8 +24,13 @@ export class ServiceProvidersController {
 
   // Маршрут по slug для лендинга — /api/service-providers/slug/:slug
   @Get('slug/:slug')
-  findBySlug(@Param('slug') slug: string) {
-    return this.service.findBySlug(slug);
+  async findBySlug(@Param('slug') slug: string) {
+    const provider = await this.service.findBySlug(slug);
+    // Инкрементируем счётчик просмотров асинхронно (не блокируем ответ)
+    if (provider?.id) {
+      this.service.incrementViews(provider.id).catch(() => {});
+    }
+    return provider;
   }
 
   @Get(':id')

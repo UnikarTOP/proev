@@ -5,7 +5,10 @@ import { CreateReviewDto } from './dto/create-review.dto';
 
 @Controller('stations')
 export class StationsController {
-  constructor(private readonly stationsService: StationsService) {}
+  constructor(
+    private readonly stationsService: StationsService,
+    private readonly syncService: StationsSyncService,
+  ) {}
 
   @Get()
   findAll(@Query('city') city?: string, @Query('connector') connector?: string) {
@@ -45,5 +48,18 @@ export class StationsController {
   addReview(@Param('id') id: string, @Body() dto: CreateReviewDto) {
     // TODO: userId брать из auth-guard
     return this.stationsService.addReview(id, dto, 'anonymous');
+  }
+}
+
+import { StationsSyncService } from './stations-sync.service';
+
+// Добавьте в конструктор: private syncService: StationsSyncService
+// И этот эндпоинт:
+// @Post('sync/osm')
+// syncOsm() { return this.syncService.syncOsm();
+  /** POST /api/stations/sync/osm — ручной запуск синхронизации OSM */
+  @Post('sync/osm')
+  syncOsm() {
+    return this.syncService.syncOsm();
   }
 }

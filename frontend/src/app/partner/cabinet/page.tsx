@@ -13,7 +13,7 @@ interface Provider {
   photos: string[]; services: string[]; brands: string[];
   workingHours?: string; yearFounded?: number;
   isPublished: boolean; isPaidPlacement: boolean;
-  ratingAvg?: number; reviewCount: number;
+  ratingAvg?: number; reviewCount: number; viewCount?: number; viewCountWeek?: number;
   category: { name: string; slug: string };
 }
 
@@ -372,54 +372,6 @@ function PageEditor({ provider, evModels, onSave, saving, saved, token }: {
   );
 }
 
-function LeadsSection({ leads }: { leads: Lead[] }) {
-  const [filter, setFilter] = useState<'all' | 'new' | 'done'>('all');
-  const filtered = leads.filter(l => filter === 'all' ? true : filter === 'new' ? l.status === 'new' : l.status !== 'new');
-
-  return (
-    <div>
-      <div className="flex gap-2 mb-4">
-        {[['all', 'Все'], ['new', 'Новые'], ['done', 'Обработанные']].map(([v, lbl]) => (
-          <button key={v} onClick={() => setFilter(v as any)}
-            className={`text-sm px-4 py-1.5 rounded-full border transition-colors ${filter === v ? 'border-volt-600 bg-volt-600/10 text-volt-600 font-semibold' : 'border-line text-muted hover:border-graphite-900/30'}`}>
-            {lbl}
-            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${filter === v ? 'bg-volt-600/20 text-volt-600' : 'bg-paper-50 text-muted'}`}>
-              {v === 'all' ? leads.length : v === 'new' ? leads.filter(l => l.status === 'new').length : leads.filter(l => l.status !== 'new').length}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="py-16 text-center bg-white border border-line rounded-xl">
-          <i className="ti ti-mail-off text-3xl text-muted block mb-3 opacity-30" aria-hidden="true" />
-          <p className="text-sm text-muted">Заявок нет</p>
-        </div>
-      ) : (
-        <div className="bg-white border border-line rounded-xl overflow-hidden">
-          {filtered.map((l, i) => (
-            <div key={l.id} className={`flex gap-3 p-4 ${i < filtered.length - 1 ? 'border-b border-line' : ''}`}>
-              <div className="w-9 h-9 rounded-full bg-paper-50 border border-line flex items-center justify-center text-sm font-semibold text-ink-900 shrink-0">
-                {l.name.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-medium text-ink-900">{l.name}</span>
-                  <a href={`tel:${l.phone}`} className="text-xs text-volt-600 hover:underline">{l.phone}</a>
-                </div>
-                {l.message && <p className="text-xs text-muted leading-relaxed">{l.message}</p>}
-                <p className="text-[11px] text-muted mt-1">{timeAgo(l.createdAt)}</p>
-              </div>
-              <span className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full h-fit ${l.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-paper-50 text-muted border border-line'}`}>
-                {l.status === 'new' ? 'Новая' : 'Обработана'}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ReviewsSection({ reviews, provider }: { reviews: Review[]; provider: Provider }) {
   const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) : 0;

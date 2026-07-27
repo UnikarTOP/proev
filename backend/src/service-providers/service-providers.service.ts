@@ -86,4 +86,14 @@ export class ServiceProvidersService {
 
     return review;
   }
+  async incrementViews(providerId: string) {
+    await this.prisma.serviceProvider.update({
+      where: { id: providerId },
+      data: {
+        viewCount:     { increment: 1 },
+        viewCountWeek: { increment: 1 },
+      },
+    });
+  }
+
 }

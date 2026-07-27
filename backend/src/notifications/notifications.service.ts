@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
@@ -160,3 +161,13 @@ export class NotificationsService {
     }
   }
 }
+
+
+  @Cron("0 0 * * 0")  // Каждое воскресенье в 00:00
+  // Сбрасываем недельный счётчик просмотров каждое воскресенье в 00:00
+  async resetWeeklyViews() {
+    await this.prisma.serviceProvider.updateMany({
+      data: { viewCountWeek: 0 },
+    });
+    this.logger.log('Недельные счётчики просмотров сброшены');
+  }
