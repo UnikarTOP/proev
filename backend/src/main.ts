@@ -197,10 +197,86 @@ async function mountAdmin(app: any) {
                   data: { status: 'approved' },
                 });
 
+                // Отправляем email партнёру с паролем
+                const siteUrl = process.env.SITE_URL || 'https://proev.ru';
+                const cabinetUrl = `${siteUrl}/partner/cabinet`;
+                const smtpHost = process.env.SMTP_HOST;
+                const smtpUser = process.env.SMTP_USER;
+                const smtpPass = process.env.SMTP_PASS;
+
+                if (smtpHost && smtpUser && smtpPass) {
+                  const nodemailerMod = await import('nodemailer');
+                  const transporter = nodemailerMod.default.createTransport({
+                    host: smtpHost,
+                    port: parseInt(process.env.SMTP_PORT || '465'),
+                    secure: parseInt(process.env.SMTP_PORT || '465') === 465,
+                    auth: { user: smtpUser, pass: smtpPass },
+                  });
+                  await transporter.sendMail({
+                    from: process.env.SMTP_FROM || `proev.ru <${smtpUser}>`,
+                    to: app.email,
+                    subject: 'Ваша заявка одобрена — proev.ru',
+                    html: `
+                    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#10192B">
+                      <div style="font-size:22px;font-weight:700;margin-bottom:4px">
+                        proev<span style="color:#0BA5CC">.ru</span>
+                      </div>
+                      <div style="font-size:12px;color:#6B7686;margin-bottom:28px">Платформа для владельцев электромобилей</div>
+
+                      <h2 style="font-size:20px;font-weight:600;margin-bottom:8px">🎉 Заявка одобрена!</h2>
+                      <p style="font-size:14px;color:#6B7686;line-height:1.6;margin-bottom:24px">
+                        Добро пожаловать в proev.ru! Ваш аккаунт создан.
+                        Войдите в личный кабинет и заполните страницу своего сервиса.
+                      </p>
+
+                      <div style="background:#F9F8F5;border-radius:12px;padding:20px;margin-bottom:24px">
+                        <table style="font-size:14px;width:100%">
+                          <tr>
+                            <td style="color:#6B7686;padding:6px 0;width:100px">Компания</td>
+                            <td style="font-weight:500">${app.companyName}</td>
+                          </tr>
+                          <tr>
+                            <td style="color:#6B7686;padding:6px 0">Email</td>
+                            <td style="font-weight:500">${app.email}</td>
+                          </tr>
+                          <tr>
+                            <td style="color:#6B7686;padding:6px 0">Пароль</td>
+                            <td>
+                              <code style="background:#fff;border:1px solid #DCE1E8;padding:4px 10px;border-radius:6px;font-size:16px;font-weight:600;letter-spacing:0.05em">
+                                ${tempPassword}
+                              </code>
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+
+                      <a href="${cabinetUrl}"
+                        style="display:inline-block;background:#0B1220;color:#fff;text-decoration:none;
+                               padding:14px 28px;border-radius:12px;font-size:15px;font-weight:600;margin-bottom:24px">
+                        Войти в кабинет →
+                      </a>
+
+                      <p style="font-size:13px;color:#6B7686;line-height:1.6;margin-bottom:8px">
+                        <strong>Рекомендуем сразу:</strong>
+                      </p>
+                      <ol style="font-size:13px;color:#6B7686;line-height:1.8;padding-left:20px;margin-bottom:24px">
+                        <li>Войдите с паролем выше и смените его на свой</li>
+                        <li>Заполните профиль: фото, услуги, марки EV</li>
+                        <li>Опубликуйте страницу — её увидят клиенты</li>
+                      </ol>
+
+                      <div style="font-size:12px;color:#B4B2A9;border-top:1px solid #DCE1E8;padding-top:16px">
+                        Вопросы? Пишите: <a href="mailto:hello@proev.ru" style="color:#0BA5CC">hello@proev.ru</a>
+                      </div>
+                    </div>
+                    `,
+                  }).catch((e: Error) => console.error('Email ошибка:', e.message));
+                }
+
                 return {
                   record: record.toJSON(currentAdmin),
                   notice: {
-                    message: `✅ Одобрено! Аккаунт создан. Email: ${app.email} | Временный пароль: ${tempPassword}`,
+                    message: `✅ Одобрено! Email с паролем отправлен на ${app.email}. Пароль: ${tempPassword}`,
                     type: 'success',
                   },
                 };

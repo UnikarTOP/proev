@@ -39,10 +39,10 @@ export default function PartnerBlog({ token }: { token: string }) {
   const [uploadingCover, setUploadingCover] = useState(false);
 
   const API = process.env.NEXT_PUBLIC_API_URL || '/api';
-  const authH = { 'X-Partner-Token': token, 'Content-Type': 'application/json' };
+  const authH = { 'Authorization': `Bearer ${token}`, 'X-Partner-Token': token, 'Content-Type': 'application/json' };
 
   const load = useCallback(async () => {
-    const res = await fetch(`${API}/provider-blog/my`, { headers: { 'X-Partner-Token': token } });
+    const res = await fetch(`${API}/provider-blog/my`, { headers: { 'X-Partner-Token': token, 'Authorization': `Bearer ${token}` } });
     if (res.ok) setPosts(await res.json());
     setLoading(false);
   }, [token]);
@@ -86,7 +86,7 @@ export default function PartnerBlog({ token }: { token: string }) {
   const deletePost = async (id: string) => {
     if (!confirm('Удалить статью? Это действие нельзя отменить.')) return;
     setDeleting(id);
-    await fetch(`${API}/provider-blog/my/${id}`, { method: 'DELETE', headers: { 'X-Partner-Token': token } });
+    await fetch(`${API}/provider-blog/my/${id}`, { method: 'DELETE', headers: { 'X-Partner-Token': token, 'Authorization': `Bearer ${token}` } });
     setPosts(ps => ps.filter(p => p.id !== id));
     if (editing?.id === id) cancel();
     setDeleting(null);
@@ -97,7 +97,7 @@ export default function PartnerBlog({ token }: { token: string }) {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch(`${API}/upload/photo`, { method: 'POST', headers: { 'X-Partner-Token': token }, body: fd });
+      const res = await fetch(`${API}/upload/photo`, { method: 'POST', headers: { 'X-Partner-Token': token, 'Authorization': `Bearer ${token}` }, body: fd });
       const data = await res.json();
       if (data.url) setForm(f => ({ ...f, coverUrl: data.url }));
     } catch {}

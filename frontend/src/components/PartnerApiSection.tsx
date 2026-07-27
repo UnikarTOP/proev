@@ -24,7 +24,7 @@ export default function PartnerApiSection({ token }: { token: string }) {
 
   const [loading, setLoading] = useState(false);
   const API = process.env.NEXT_PUBLIC_API_URL || '/api';
-  const H = { 'X-Partner-Token': token, 'Content-Type': 'application/json' };
+  const H = { 'Authorization': `Bearer ${token}`, 'X-Partner-Token': token, 'Content-Type': 'application/json' };
 
   const load = useCallback(async () => {
     const [wh, k] = await Promise.all([

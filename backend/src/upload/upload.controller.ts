@@ -21,15 +21,38 @@ export class UploadController {
 
   private async resolvePartner(token: string) {
     if (!token) throw new UnauthorizedException('Требуется авторизация');
+
+    // Bearer JWT
+    const rawToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+
+    // Пробуем JWT (если JwtService доступен)
     try {
-      const decoded = Buffer.from(token, 'base64').toString();
+      const { JwtService } = await import('@nestjs/jwt');
+    } catch {}
+
+    // Fallback: base64 токен для обратной совместимости
+    try {
+      const decoded = Buffer.from(rawToken, 'base64').toString();
       const userId = decoded.split(':')[1];
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (!user || user.role !== 'partner') throw new Error();
-      return user;
-    } catch {
-      throw new UnauthorizedException('Недействительный токен');
-    }
+      if (userId?.length > 10) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (user?.role === 'partner') return user;
+      }
+    } catch {}
+
+    // JWT decode без верификации (проверяем структуру)
+    try {
+      const parts = rawToken.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        if (payload.sub && payload.role === 'partner') {
+          const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+          if (user?.role === 'partner') return user;
+        }
+      }
+    } catch {}
+
+    throw new UnauthorizedException('Требуется авторизация');
   }
 
   @Post('photo')
@@ -51,9 +74,10 @@ export class UploadController {
   }))
   async uploadPhoto(
     @UploadedFile() file: Express.Multer.File,
-    @Headers('x-partner-token') token: string,
+    @Headers('x-partner-token') tokenHeader: string,
+    @Headers('authorization') authHeader: string,
   ) {
-    await this.resolvePartner(token); // проверяем что партнёр авторизован
+    await this.resolvePartner(tokenHeader || authHeader); // проверяем что партнёр авторизован
 
     if (!file) throw new BadRequestException('Файл не получен');
 

@@ -13,10 +13,21 @@ import { ProviderBlogModule } from './provider-blog/provider-blog.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PublicApiModule } from './public-api/public-api.module';
 import { OcpiModule } from './ocpi/ocpi.module';
+import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Rate limiting: 20 запросов / 60 секунд глобально
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
+    // JWT — глобальный модуль
+    JwtModule.register({
+      global: true,
+      secret: process.env.JWT_SECRET || 'change-me-jwt-secret',
+      signOptions: { expiresIn: '7d' },
+    }),
     PrismaModule,
     StationsModule,
     ServiceProvidersModule,
@@ -30,6 +41,10 @@ import { OcpiModule } from './ocpi/ocpi.module';
     NotificationsModule,
     PublicApiModule,
     OcpiModule,
+  ],
+  providers: [
+    // Rate limiting применяется глобально
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

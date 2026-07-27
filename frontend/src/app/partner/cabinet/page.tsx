@@ -38,11 +38,16 @@ const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 function getToken() {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('partner_token');
+  return localStorage.getItem('partner_jwt') || localStorage.getItem('partner_token');
 }
 
 function authHeaders() {
-  return { 'Content-Type': 'application/json', 'X-Partner-Token': getToken() || '' };
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    'X-Partner-Token': token || '', // обратная совместимость
+  };
 }
 
 // ── Утилиты ────────────────────────────────────────────────────────────────
@@ -595,7 +600,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
       });
       if (!res.ok) { setErr('Неверный email или пароль'); setLoading(false); return; }
       const data = await res.json();
-      localStorage.setItem('partner_token', data.token);
+      localStorage.setItem('partner_jwt', data.accessToken || data.token);
       onLogin();
     } catch { setErr('Ошибка соединения'); }
     setLoading(false);
@@ -650,7 +655,7 @@ export default function CabinetPage() {
   const [saved, setSaved] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => { setToken(localStorage.getItem('partner_token')); }, []);
+  useEffect(() => { setToken(localStorage.getItem('partner_jwt') || localStorage.getItem('partner_token')); }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -658,7 +663,7 @@ export default function CabinetPage() {
       fetch(`${API}/partners/me`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
       fetch(`${API}/partners/ev-models`).then(r => r.json()).catch(() => ({ models: [] })),
     ]).then(([meData, modData]) => {
-      if (!meData) { localStorage.removeItem('partner_token'); setToken(null); return; }
+      if (!meData) { localStorage.removeItem('partner_jwt'); localStorage.removeItem('partner_token'); setToken(null); return; }
       setMe(meData);
       setEvModels(modData.models || []);
     });
@@ -694,9 +699,9 @@ export default function CabinetPage() {
     await save({ isPublished: !me.provider.isPublished });
   }, [me, save]);
 
-  const logout = () => { localStorage.removeItem('partner_token'); setToken(null); setMe(null); };
+  const logout = () => { localStorage.removeItem('partner_jwt'); localStorage.removeItem('partner_token'); setToken(null); setMe(null); };
 
-  if (!token) return <LoginScreen onLogin={() => setToken(localStorage.getItem('partner_token'))} />;
+  if (!token) return <LoginScreen onLogin={() => setToken(localStorage.getItem('partner_jwt') || localStorage.getItem('partner_token'))} />;
   if (!me) return (
     <div className="flex items-center justify-center h-64 text-muted text-sm">
       <i className="ti ti-loader-2 animate-spin text-xl mr-2" aria-hidden="true" />Загружаем...

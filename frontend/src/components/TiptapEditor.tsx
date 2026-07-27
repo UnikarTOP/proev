@@ -70,7 +70,7 @@ export default function TiptapEditor({ content, onChange, token, placeholder = '
     try {
       const res = await fetch(`${api}/upload/photo`, {
         method: 'POST',
-        headers: token ? { 'X-Partner-Token': token } : {},
+        headers: token ? { 'X-Partner-Token': token, 'Authorization': `Bearer ${token}` } : {},
         body: fd,
       });
       const data = await res.json();

@@ -43,6 +43,7 @@ services:
       SITE_URL: ${SITE_URL:-https://proev.ru}
       API_URL: ${API_URL:-https://api.proev.ru}
       OCPI_SERVER_TOKEN: ${OCPI_SERVER_TOKEN:-proev-ocpi-token-change-me}
+      JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret-32chars}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_USER: ${SMTP_USER}

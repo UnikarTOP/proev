@@ -301,7 +301,7 @@ export default function CrmLeads({ providerId, token }: { providerId: string; to
   const handleStatusChange = async (id: string, status: LeadStatus, note?: string) => {
     const res = await fetch(`${API}/leads/${id}/status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-Partner-Token': token },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-Partner-Token': token },
       body: JSON.stringify({ status, note }),
     });
     if (res.ok) {
@@ -317,7 +317,7 @@ export default function CrmLeads({ providerId, token }: { providerId: string; to
   const handleNoteChange = async (id: string, note: string, followUp?: string) => {
     const res = await fetch(`${API}/leads/${id}/note`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-Partner-Token': token },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-Partner-Token': token },
       body: JSON.stringify({ partnerNote: note, nextFollowUp: followUp }),
     });
     if (res.ok) {
