@@ -134,7 +134,7 @@ export const RUSSIAN_CITIES = [
 ];
 
 // Уникальный массив без дублей, сортировка по умолчанию (по населению)
-export const CITIES = [...new Set(RUSSIAN_CITIES)];
+export const CITIES = Array.from(new Set(RUSSIAN_CITIES));
 
 // Функция поиска по введённому тексту
 export function filterCities(query: string, limit = 10): string[] {
