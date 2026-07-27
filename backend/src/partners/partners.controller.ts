@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Patch, Body, Headers,
+  Controller, Post, Get, Patch, Body, Headers, Param,
   UnauthorizedException, NotFoundException, BadRequestException,
 } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
@@ -152,13 +152,9 @@ export class PartnersController {
   }
 
   @Get('application-status/:email')
-  async applicationStatus(@Headers('x-partner-token') _t: string, @Body() _b: any,
-    ...args: any[]
-  ) {
-    // Получаем email из URL
-    const email = args[0]?.params?.email || '';
+  async applicationStatus(@Param('email') email: string) {
     const app = await this.prisma.partnerApplication.findFirst({
-      where: { email },
+      where: { email: decodeURIComponent(email) },
       orderBy: { createdAt: 'desc' },
     });
     if (!app) return { status: 'not_found' };
@@ -346,8 +342,7 @@ export class PartnersController {
   }
 
   @Get('reset-token-valid/:token')
-  async checkResetToken(@Headers('x-partner-token') _: string, ...args: any[]) {
-    const token = args[0]?.params?.token || '';
+  async checkResetToken(@Param('token') token: string) {
     const user = await this.prisma.user.findUnique({ where: { resetToken: token } });
     if (!user?.resetTokenExpiry) return { valid: false };
     if (user.resetTokenExpiry < new Date()) return { valid: false, expired: true };

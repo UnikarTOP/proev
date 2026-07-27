@@ -14,7 +14,7 @@ export default function HomeNews() {
   const [news, setNews] = useState<NewsItem[]>([]);
   useEffect(() => {
     const api = process.env.NEXT_PUBLIC_API_URL || '/api';
-    fetch(`${api}/news?limit=4`).then(r => r.json()).then(setNews).catch(() => {});
+    fetch(`${api}/news?limit=4`).then(r => r.json()).then(data => { if (Array.isArray(data)) setNews(data); }).catch(() => {});
   }, []);
   if (!news.length) return null;
 
