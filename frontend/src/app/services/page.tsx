@@ -282,63 +282,90 @@ function ServicesContent() {
 
       <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6">
 
-        {/* Строка поиска + фильтры */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        {/* Фильтры — всё в один ряд */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
 
-          {/* Поиск */}
-          <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm pointer-events-none">🔍</span>
+          {/* Поиск — растягивается */}
+          <div className="relative" style={{ minWidth: 200, flex: '1 1 200px' }}>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none">🔍</span>
             <input
               value={searchInput}
               onChange={e => handleSearchInput(e.target.value)}
-              placeholder="Поиск по названию, услуге, марке EV..."
-              className="w-full pl-10 pr-9 py-2.5 text-sm border border-line rounded-xl focus:outline-none focus:border-volt-600 bg-white"
+              placeholder="Поиск по названию, услуге, марке..."
+              className="w-full pl-8 pr-7 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-volt-600 bg-white"
             />
             {searchInput && (
               <button onClick={() => { setSearchInput(''); setSearch(''); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink-900 text-sm">
-                ✕
-              </button>
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink-900 text-xs">✕</button>
             )}
           </div>
 
-          {/* Город */}
-          <div className="relative shrink-0">
-            <button onClick={() => setShowCityDropdown(v => !v)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl border transition-all whitespace-nowrap font-medium
-                ${city
-                  ? 'border-volt-600 bg-volt-600/10 text-volt-600'
-                  : 'border-line bg-white text-muted hover:border-graphite-900/30 hover:text-ink-900'
-                }`}>
-              <span>📍</span>
-              <span>{city || 'Выбрать город'}</span>
-              {city && (
-                <span onClick={e => { e.stopPropagation(); clearCity(); }}
-                  className="text-volt-600/60 hover:text-volt-600 font-bold leading-none">
-                  ✕
-                </span>
-              )}
+          {/* Разделитель */}
+          <div className="h-7 w-px bg-line hidden sm:block" />
+
+          {/* Категории — иконки с тултипом */}
+          <div className="flex items-center gap-1">
+            {/* Все */}
+            <button onClick={() => setActiveCategory('')}
+              title="Все категории"
+              className={`flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-semibold border transition-all
+                ${!activeCategory ? 'bg-ink-900 text-white border-ink-900' : 'bg-white border-line text-muted hover:border-graphite-900/30 hover:text-ink-900'}`}>
+              Все
+              <span className={`text-[10px] ${!activeCategory ? 'text-white/60' : 'text-muted'}`}>{providers.length}</span>
             </button>
 
+            {cityCounts.map(cat => (
+              <button key={cat.id}
+                onClick={() => setActiveCategory(activeCategory === cat.slug ? '' : cat.slug)}
+                title={`${cat.name} (${cat.count})`}
+                className={`relative flex items-center justify-center w-9 h-9 rounded-xl border transition-all text-base
+                  ${activeCategory === cat.slug
+                    ? 'bg-ink-900 border-ink-900'
+                    : 'bg-white border-line hover:border-graphite-900/30 hover:bg-paper-50'
+                  }`}>
+                <span>{CAT_ICONS[cat.slug] || '🏪'}</span>
+                {cat.count > 0 && (
+                  <span className={`absolute -top-1 -right-1 text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center
+                    ${activeCategory === cat.slug ? 'bg-volt-600 text-white' : 'bg-line text-muted'}`}>
+                    {cat.count > 9 ? '9+' : cat.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Разделитель */}
+          <div className="h-7 w-px bg-line hidden sm:block" />
+
+          {/* Город */}
+          <div className="relative">
+            <button onClick={() => setShowCityDropdown(v => !v)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border transition-all font-medium
+                ${city ? 'border-volt-600 bg-volt-600/10 text-volt-600' : 'border-line bg-white text-muted hover:border-graphite-900/30 hover:text-ink-900'}`}>
+              <span className="text-base leading-none">📍</span>
+              <span className="max-w-[80px] truncate">{city || 'Город'}</span>
+              {city
+                ? <span onClick={e => { e.stopPropagation(); clearCity(); }} className="text-volt-600/60 hover:text-volt-600 font-bold">✕</span>
+                : <span className="text-muted text-xs">▾</span>
+              }
+            </button>
             {showCityDropdown && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setShowCityDropdown(false)} />
-                <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-line rounded-xl shadow-xl overflow-hidden w-56">
+                <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-line rounded-xl shadow-xl overflow-hidden w-52">
                   <div className="p-2 border-b border-line">
                     <input autoFocus placeholder="Введите город..."
-                      value={cityInput}
-                      onChange={e => setCityInput(e.target.value)}
+                      value={cityInput} onChange={e => setCityInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && cityInput.length > 1) applyCity(cityInput); }}
-                      className="w-full text-sm px-3 py-2 border border-line rounded-lg focus:outline-none focus:border-volt-600"
-                    />
+                      className="w-full text-sm px-3 py-1.5 border border-line rounded-lg focus:outline-none focus:border-volt-600" />
                   </div>
-                  <div className="py-1 max-h-60 overflow-y-auto">
+                  <div className="py-1 max-h-56 overflow-y-auto">
                     {detectedCity && (
                       <button onClick={() => applyCity(detectedCity)}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-paper-50 flex items-center gap-2 border-b border-line">
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-paper-50 flex items-center gap-2 border-b border-line">
                         <span className="text-volt-600">📍</span>
                         <span className="font-medium text-ink-900">{detectedCity}</span>
-                        <span className="text-xs text-muted ml-auto">Ваш город</span>
+                        <span className="text-xs text-muted ml-auto">Ваш</span>
                       </button>
                     )}
                     {CITIES.filter(c => c !== detectedCity && c.toLowerCase().includes(cityInput.toLowerCase())).map(c => (
@@ -353,47 +380,14 @@ function ServicesContent() {
             )}
           </div>
 
-          {/* Только верифицированные */}
-          <button onClick={() => setOnlyVerified(v => !v)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl border transition-all whitespace-nowrap font-medium
-              ${onlyVerified
-                ? 'border-green-500 bg-green-50 text-green-700'
-                : 'border-line bg-white text-muted hover:border-graphite-900/30 hover:text-ink-900'
-              }`}>
-            <span>✅</span>
-            <span>Проверенные</span>
-          </button>
-        </div>
-
-        {/* Категории */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-6 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-          <button onClick={() => setActiveCategory('')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border shrink-0
-              ${!activeCategory
-                ? 'bg-ink-900 text-white border-ink-900'
-                : 'bg-white border-line text-muted hover:border-graphite-900/30 hover:text-ink-900'
-              }`}>
-            Все
-            <span className={`text-[11px] ${!activeCategory ? 'text-white/60' : 'text-muted'}`}>
-              {providers.length}
-            </span>
+          {/* Верифицированные */}
+          <button onClick={() => setOnlyVerified(v => !v)} title="Только верифицированные сервисы"
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border transition-all font-medium
+              ${onlyVerified ? 'border-green-500 bg-green-50 text-green-700' : 'border-line bg-white text-muted hover:border-graphite-900/30 hover:text-ink-900'}`}>
+            <span className="text-base leading-none">✅</span>
+            <span className="hidden sm:inline">Проверенные</span>
           </button>
 
-          {cityCounts.map(cat => (
-            <button key={cat.id}
-              onClick={() => setActiveCategory(activeCategory === cat.slug ? '' : cat.slug)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border shrink-0
-                ${activeCategory === cat.slug
-                  ? 'bg-ink-900 text-white border-ink-900'
-                  : 'bg-white border-line text-muted hover:border-graphite-900/30 hover:text-ink-900'
-                }`}>
-              <span>{CAT_ICONS[cat.slug] || '🏪'}</span>
-              {cat.name}
-              <span className={`text-[11px] ${activeCategory === cat.slug ? 'text-white/60' : 'text-muted'}`}>
-                {cat.count}
-              </span>
-            </button>
-          ))}
         </div>
 
         {/* Счётчик результатов */}
