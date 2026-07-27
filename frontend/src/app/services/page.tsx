@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense, useCallback, useRef } from 'react';
+import CitySelect from '@/components/CitySelect';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 interface Category { id: string; name: string; slug: string; }
@@ -17,11 +18,6 @@ const CAT_ICONS: Record<string, string> = {
   'strahovanie': '🛡️', 'vykup': '🚗', 'obuchenie': '📚',
   'arenda': '🔑', 'tyuning': '⚙️', 'default': '🏪',
 };
-
-const CITIES = [
-  'Москва','Санкт-Петербург','Новосибирск','Екатеринбург',
-  'Казань','Краснодар','Нижний Новгород','Сочи','Владивосток','Тюмень',
-];
 
 // Подсветка совпадений поиска
 function Hl({ text, q }: { text: string; q: string }) {
@@ -185,8 +181,6 @@ function ServicesContent() {
   const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || '');
   const [city, setCity] = useState(searchParams.get('city') || '');
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [cityInput, setCityInput] = useState('');
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [geoHidden, setGeoHidden] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
@@ -334,77 +328,12 @@ function ServicesContent() {
           </div>
 
           {/* Город */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setShowCityDropdown(v => !v)} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '10px 14px', fontSize: 13, fontWeight: 500,
-              border: city ? '1px solid #0BA5CC' : '1px solid #DCE1E8',
-              borderRadius: 12, cursor: 'pointer', whiteSpace: 'nowrap',
-              background: city ? 'rgba(11,165,204,0.08)' : '#fff',
-              color: city ? '#0BA5CC' : '#6B7686',
-              WebkitAppearance: 'none',
-            }}>
-              <span>📍</span>
-              <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {city || 'Город'}
-              </span>
-              {city
-                ? <span onClick={e => { e.stopPropagation(); clearCity(); }}
-                    style={{ fontSize: 12, opacity: 0.6, cursor: 'pointer' }}>✕</span>
-                : <span style={{ fontSize: 10, color: '#B4B2A9' }}>▾</span>
-              }
-            </button>
-
-            {showCityDropdown && (
-              <>
-                <div onClick={() => setShowCityDropdown(false)}
-                  style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-                <div style={{
-                  position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 40,
-                  background: '#fff', border: '1px solid #DCE1E8', borderRadius: 12,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden', width: 220,
-                }}>
-                  <div style={{ padding: 8, borderBottom: '1px solid #DCE1E8' }}>
-                    <input autoFocus placeholder="Введите город..."
-                      value={cityInput} onChange={e => setCityInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && cityInput.length > 1) applyCity(cityInput); }}
-                      style={{
-                        width: '100%', boxSizing: 'border-box',
-                        padding: '7px 12px', fontSize: 13,
-                        border: '1px solid #DCE1E8', borderRadius: 8,
-                        outline: 'none', WebkitAppearance: 'none',
-                      }}
-                    />
-                  </div>
-                  <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
-                    {detectedCity && (
-                      <button onClick={() => applyCity(detectedCity)} style={{
-                        width: '100%', textAlign: 'left', padding: '9px 16px',
-                        fontSize: 13, cursor: 'pointer', background: 'none', border: 'none',
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        borderBottom: '1px solid #DCE1E8', color: '#10192B',
-                      }}>
-                        <span style={{ color: '#0BA5CC' }}>📍</span>
-                        <strong>{detectedCity}</strong>
-                        <span style={{ fontSize: 11, color: '#B4B2A9', marginLeft: 'auto' }}>Ваш</span>
-                      </button>
-                    )}
-                    {CITIES.filter(c => c !== detectedCity && c.toLowerCase().includes(cityInput.toLowerCase())).map(c => (
-                      <button key={c} onClick={() => applyCity(c)} style={{
-                        width: '100%', textAlign: 'left', padding: '8px 16px',
-                        fontSize: 13, cursor: 'pointer', background: 'none', border: 'none',
-                        color: '#6B7686', display: 'block',
-                      }}
-                      onMouseEnter={e => { (e.target as HTMLElement).style.background = '#F9F8F5'; }}
-                      onMouseLeave={e => { (e.target as HTMLElement).style.background = 'none'; }}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          <CitySelect
+            value={city}
+            onChange={c => { applyCity(c); }}
+            placeholder="Выберите город"
+            style={{ flexShrink: 0, minWidth: 180 }}
+          />
 
           {/* Верифицированные */}
           <button onClick={() => setOnlyVerified(v => !v)} style={{

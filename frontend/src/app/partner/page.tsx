@@ -1,4 +1,5 @@
 'use client';
+import CitySelect from '@/components/CitySelect';
 import { useState, useEffect } from 'react';
 
 type Step = 'landing' | 'form' | 'sent' | 'status';
@@ -142,7 +143,11 @@ export default function PartnerPage() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-muted uppercase tracking-wide block mb-1.5">Город *</label>
-            <input value={form.city} onChange={e => setForm(f=>({...f,city:e.target.value}))} placeholder="Москва" className={inp}/>
+            <CitySelect
+              value={form.city}
+              onChange={city => setForm(f=>({...f, city}))}
+              placeholder="Выберите город"
+            />
           </div>
           <div>
             <label className="text-xs font-medium text-muted uppercase tracking-wide block mb-1.5">Телефон *</label>

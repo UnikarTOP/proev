@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import CrmLeads from '@/components/CrmLeads';
 import PartnerBlog from '@/components/PartnerBlog';
+import CitySelect from '@/components/CitySelect';
 import PartnerApiSection from '@/components/PartnerApiSection';
 
 interface Provider {
@@ -250,7 +251,13 @@ function PageEditor({ provider, evModels, onSave, saving, saved, token }: {
       {/* Контакты */}
       <Card title="Контакты" icon="ti-phone">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Город"><input value={form.city || ''} onChange={e => upd('city', e.target.value)} placeholder="Москва" className={inp} /></Field>
+          <Field label="Город">
+            <CitySelect
+              value={form.city || ''}
+              onChange={city => upd('city', city)}
+              placeholder="Выберите город"
+            />
+          </Field>
           <Field label="Телефон"><input value={form.phone || ''} onChange={e => upd('phone', e.target.value)} placeholder="+7 (___) ___-__-__" className={inp} /></Field>
           <Field label="Адрес"><input value={form.address || ''} onChange={e => upd('address', e.target.value)} placeholder="ул. Нагатинская, 18с2" className={inp} /></Field>
           <Field label="Email"><input value={form.email || ''} onChange={e => upd('email', e.target.value)} placeholder="info@evservice.ru" className={inp} /></Field>
