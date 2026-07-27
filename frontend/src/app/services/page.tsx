@@ -23,131 +23,156 @@ const CITIES = [
   'Казань','Краснодар','Нижний Новгород','Сочи','Владивосток','Тюмень',
 ];
 
-// ── Подсветка поиска ─────────────────────────────────────────────────────────
+// Подсветка совпадений поиска
 function Hl({ text, q }: { text: string; q: string }) {
   if (!q.trim() || !text) return <>{text}</>;
   const i = text.toLowerCase().indexOf(q.toLowerCase());
   if (i === -1) return <>{text}</>;
-  return <>{text.slice(0, i)}<mark className="bg-amber-100 text-ink-900 rounded-sm px-0.5">{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
+  return (
+    <>{text.slice(0, i)}
+    <mark style={{ background: '#FEF3CD', color: 'inherit', borderRadius: 2, padding: '0 2px' }}>
+      {text.slice(i, i + q.length)}
+    </mark>
+    {text.slice(i + q.length)}</>
+  );
 }
 
-// ── Карточка провайдера ───────────────────────────────────────────────────────
+// Карточка провайдера
 function ProviderCard({ p, q = '' }: { p: Provider; q?: string }) {
+  const stripColor = p.isPaidPlacement
+    ? 'linear-gradient(90deg,#F59E0B,#EF9F27)'
+    : p.verified ? 'linear-gradient(90deg,#1D9E75,#0BA5CC)'
+    : '#E5E7EB';
+
   return (
-    <a href={`/services/${p.slug}`}
-      className="group flex flex-col bg-white border border-line rounded-2xl overflow-hidden hover:shadow-md hover:border-graphite-900/20 transition-all duration-200">
+    <a href={`/services/${p.slug}`} style={{ display: 'flex', flexDirection: 'column', textDecoration: 'none' }}
+      className="group bg-white border border-line rounded-2xl overflow-hidden hover:shadow-md hover:border-graphite-900/20 transition-all duration-200">
+      {/* Цветная полоска сверху */}
+      <div style={{ height: 3, background: stripColor, flexShrink: 0 }} />
 
-      {/* Верхняя полоса категории */}
-      <div className="h-1 w-full" style={{
-        background: p.isPaidPlacement ? 'linear-gradient(90deg,#F59E0B,#EF9F27)' :
-          p.verified ? 'linear-gradient(90deg,#1D9E75,#0BA5CC)' : '#DCE1E8'
-      }} />
-
-      <div className="p-5 flex flex-col flex-1">
+      <div className="p-4 flex flex-col" style={{ flex: 1 }}>
         {/* Шапка */}
-        <div className="flex gap-3 mb-3">
-          <div className="w-12 h-12 rounded-xl bg-paper-50 border border-line flex items-center justify-center overflow-hidden shrink-0">
+        <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
+          {/* Логотип */}
+          <div style={{
+            width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+            background: '#F9F8F5', border: '1px solid #DCE1E8',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden',
+          }}>
             {p.logoUrl
-              ? <img src={p.logoUrl} alt="" className="w-full h-full object-cover"
+              ? <img src={p.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              : <span className="text-lg font-bold text-muted">{(p.name[0] || '?').toUpperCase()}</span>
+              : <span style={{ fontSize: 16, fontWeight: 700, color: '#B4B2A9' }}>
+                  {(p.name[0] || '?').toUpperCase()}
+                </span>
             }
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-1.5 flex-wrap">
-              <span className="text-sm font-semibold text-ink-900 leading-snug group-hover:text-volt-600 transition-colors">
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, flexWrap: 'wrap' }}>
+              <span className="group-hover:text-volt-600" style={{
+                fontSize: 13, fontWeight: 600, color: '#10192B', lineHeight: 1.3,
+                transition: 'color 0.15s', wordBreak: 'break-word',
+              }}>
                 <Hl text={p.name} q={q} />
               </span>
+              {p.isPaidPlacement && (
+                <span style={{ fontSize: 9, fontWeight: 700, background: '#FEF3CD', color: '#B45309', padding: '2px 6px', borderRadius: 20, flexShrink: 0 }}>ТОП</span>
+              )}
+              {p.verified && (
+                <span style={{ fontSize: 9, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 6px', borderRadius: 20, flexShrink: 0 }}>✓ Проверен</span>
+              )}
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              <span className="text-[11px] text-muted">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: '#6B7686' }}>
                 {CAT_ICONS[p.category.slug] || '🏪'} {p.category.name}
               </span>
               {p.city && (
-                <>
-                  <span className="text-muted text-[11px]">·</span>
-                  <span className="text-[11px] text-muted"><Hl text={p.city} q={q} /></span>
-                </>
+                <><span style={{ fontSize: 11, color: '#B4B2A9' }}>·</span>
+                <span style={{ fontSize: 11, color: '#6B7686' }}><Hl text={p.city} q={q} /></span></>
               )}
             </div>
-          </div>
-          {/* Бейджи */}
-          <div className="flex flex-col gap-1 items-end shrink-0">
-            {p.isPaidPlacement && (
-              <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">ТОП</span>
-            )}
-            {p.verified && (
-              <span className="text-[9px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">✓ Верифицирован</span>
-            )}
           </div>
         </div>
 
         {/* Слоган */}
         {p.tagline && (
-          <p className="text-xs text-muted leading-relaxed mb-3 line-clamp-2 flex-1">
+          <p style={{ fontSize: 12, color: '#6B7686', lineHeight: 1.5, marginBottom: 10,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             <Hl text={p.tagline} q={q} />
           </p>
         )}
 
-        {/* Услуги */}
-        {p.services.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {p.services.slice(0, 3).map(s => (
-              <span key={s} className="text-[11px] bg-paper-50 border border-line px-2 py-0.5 rounded-full text-muted">
-                {s}
-              </span>
+        {/* Марки EV */}
+        {p.brands.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+            {p.brands.slice(0, 4).map(b => (
+              <span key={b} style={{
+                fontSize: 10, background: '#EFF6FF', color: '#1D4ED8',
+                padding: '2px 7px', borderRadius: 20, fontWeight: 500,
+              }}>{b}</span>
             ))}
-            {p.services.length > 3 && (
-              <span className="text-[11px] text-muted">+{p.services.length - 3}</span>
-            )}
+            {p.brands.length > 4 && <span style={{ fontSize: 10, color: '#6B7686' }}>+{p.brands.length - 4}</span>}
           </div>
         )}
 
-        {/* Футер карточки */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-line">
+        {/* Услуги */}
+        {p.services.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+            {p.services.slice(0, 3).map(s => (
+              <span key={s} style={{
+                fontSize: 11, background: '#F9F8F5', border: '1px solid #DCE1E8',
+                color: '#6B7686', padding: '2px 8px', borderRadius: 20,
+              }}>{s}</span>
+            ))}
+            {p.services.length > 3 && <span style={{ fontSize: 11, color: '#B4B2A9' }}>+{p.services.length - 3}</span>}
+          </div>
+        )}
+
+        {/* Футер */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginTop: 'auto', paddingTop: 10, borderTop: '1px solid #DCE1E8' }}>
           {p.reviewCount > 0 ? (
-            <div className="flex items-center gap-1">
-              <span className="text-amber-400 text-xs">★</span>
-              <span className="text-xs font-semibold text-ink-900">{p.ratingAvg?.toFixed(1)}</span>
-              <span className="text-[11px] text-muted">({p.reviewCount})</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ color: '#F59E0B', fontSize: 12 }}>★</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#10192B' }}>{p.ratingAvg?.toFixed(1)}</span>
+              <span style={{ fontSize: 11, color: '#B4B2A9' }}>({p.reviewCount})</span>
             </div>
           ) : (
-            <span className="text-[11px] text-muted">Новый партнёр</span>
+            <span style={{ fontSize: 11, color: '#B4B2A9' }}>Новый</span>
           )}
-          <span className="text-xs text-volt-600 font-medium flex items-center gap-1
-            opacity-0 group-hover:opacity-100 transition-opacity">
-            Подробнее →
-          </span>
+          <span className="group-hover:opacity-100" style={{
+            fontSize: 12, color: '#0BA5CC', fontWeight: 500,
+            opacity: 0, transition: 'opacity 0.15s',
+          }}>Подробнее →</span>
         </div>
       </div>
     </a>
   );
 }
 
-// ── Скелетон ─────────────────────────────────────────────────────────────────
+// Скелетон
 function Skeleton() {
   return (
-    <div className="bg-white border border-line rounded-2xl overflow-hidden">
-      <div className="h-1 bg-paper-50" />
-      <div className="p-5">
-        <div className="flex gap-3 mb-3">
-          <div className="w-12 h-12 rounded-xl bg-paper-50 shrink-0 animate-pulse" />
-          <div className="flex-1">
-            <div className="h-4 bg-paper-50 rounded-lg w-3/4 mb-2 animate-pulse" />
-            <div className="h-3 bg-paper-50 rounded-lg w-1/2 animate-pulse" />
+    <div style={{ background: '#fff', border: '1px solid #DCE1E8', borderRadius: 16, overflow: 'hidden' }}>
+      <div style={{ height: 3, background: '#F1EFE8' }} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#F1EFE8', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 14, background: '#F1EFE8', borderRadius: 6, marginBottom: 8, width: '75%' }} />
+            <div style={{ height: 11, background: '#F1EFE8', borderRadius: 6, width: '50%' }} />
           </div>
         </div>
-        <div className="h-3 bg-paper-50 rounded-lg mb-1.5 animate-pulse" />
-        <div className="h-3 bg-paper-50 rounded-lg w-2/3 mb-4 animate-pulse" />
-        <div className="flex gap-1">
-          {[1,2,3].map(i => <div key={i} className="h-5 w-16 bg-paper-50 rounded-full animate-pulse" />)}
-        </div>
+        <div style={{ height: 11, background: '#F1EFE8', borderRadius: 6, marginBottom: 6 }} />
+        <div style={{ height: 11, background: '#F1EFE8', borderRadius: 6, width: '70%' }} />
       </div>
     </div>
   );
 }
 
-// ── Основной контент ──────────────────────────────────────────────────────────
+// Основной контент
 function ServicesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -155,7 +180,6 @@ function ServicesContent() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
   const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || '');
@@ -164,32 +188,20 @@ function ServicesContent() {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [cityInput, setCityInput] = useState('');
   const [onlyVerified, setOnlyVerified] = useState(false);
-
+  const [geoHidden, setGeoHidden] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
   const api = process.env.NEXT_PUBLIC_API_URL || '/api';
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  // GeoIP
   useEffect(() => {
     const saved = document.cookie.split(';').find(c => c.trim().startsWith('proev_city='))?.split('=')[1];
-    if (saved) {
-      const decoded = decodeURIComponent(saved);
-      setDetectedCity(decoded);
-      if (!city) { setCity(decoded); }
-      return;
-    }
-    fetch(`${api}/geoip/city`)
-      .then(r => r.json())
-      .then(d => { if (d.city) setDetectedCity(d.city); })
-      .catch(() => {});
+    if (saved) { const d = decodeURIComponent(saved); setDetectedCity(d); if (!city) setCity(d); return; }
+    fetch(`${api}/geoip/city`).then(r => r.json()).then(d => { if (d.city) setDetectedCity(d.city); }).catch(() => {});
   }, []);
 
-  // Категории
   useEffect(() => {
-    fetch(`${api}/service-providers/categories`)
-      .then(r => r.json()).then(setCategories).catch(() => {});
+    fetch(`${api}/service-providers/categories`).then(r => r.json()).then(setCategories).catch(() => {});
   }, []);
 
-  // Загрузка провайдеров
   const load = useCallback(async () => {
     setLoading(true);
     const p = new URLSearchParams();
@@ -205,7 +217,6 @@ function ServicesContent() {
 
   useEffect(() => { load(); }, [load]);
 
-  // URL sync
   useEffect(() => {
     const p = new URLSearchParams();
     if (activeCategory) p.set('category', activeCategory);
@@ -214,18 +225,15 @@ function ServicesContent() {
     router.replace(p.toString() ? `/services?${p}` : '/services', { scroll: false });
   }, [activeCategory, city, search]);
 
-  // Debounce поиска
-  const handleSearchInput = (v: string) => {
+  const handleSearch = (v: string) => {
     setSearchInput(v);
-    clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => setSearch(v), 350);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setSearch(v), 350);
   };
 
   const applyCity = (c: string) => {
-    setCity(c);
-    setShowCityDropdown(false);
-    setCityInput('');
-    document.cookie = `proev_city=${encodeURIComponent(c)};max-age=${7*86400};path=/`;
+    setCity(c); setShowCityDropdown(false); setCityInput(''); setGeoHidden(true);
+    document.cookie = `proev_city=${encodeURIComponent(c)};max-age=${7 * 86400};path=/`;
   };
 
   const clearCity = () => {
@@ -233,104 +241,162 @@ function ServicesContent() {
     document.cookie = 'proev_city=;max-age=0;path=/';
   };
 
-  // Фильтрация и сортировка
-  const filtered = providers.filter(p => !onlyVerified || p.verified);
+  const clearAll = () => {
+    setSearch(''); setSearchInput(''); setActiveCategory(''); clearCity(); setOnlyVerified(false);
+  };
 
+  const filtered = providers.filter(p => !onlyVerified || p.verified);
   const inCity = city ? filtered.filter(p => (p.city || '').toLowerCase().includes(city.toLowerCase())) : [];
   const outCity = city ? filtered.filter(p => !(p.city || '').toLowerCase().includes(city.toLowerCase())) : filtered;
+  const hasFilters = !!(search || activeCategory || city || onlyVerified);
 
-  const totalCount = filtered.length;
-  const cityCounts = categories.map(c => ({
-    ...c,
-    count: providers.filter(p => p.category.slug === c.slug).length,
+  const catCounts = categories.map(c => ({
+    ...c, count: providers.filter(p => p.category.slug === c.slug).length,
   }));
 
-  return (
-    <div className="min-h-screen bg-paper-50">
+  // CSS для скрытия скроллбара кроссбраузерно
+  const scrollStyle: React.CSSProperties = {
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    msOverflowStyle: 'none',
+    scrollbarWidth: 'none' as const,
+  };
 
-      {/* Шапка страницы */}
-      <div className="bg-white border-b border-line">
-        <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6 md:py-8">
-          <h1 className="text-[22px] md:text-[30px] font-bold text-ink-900 tracking-tight mb-1">
+  return (
+    <div style={{ minHeight: '100vh', background: '#F9F8F5' }}>
+
+      {/* Шапка */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #DCE1E8' }}>
+        <div className="max-w-[1200px] mx-auto px-4 md:px-6" style={{ paddingTop: 24, paddingBottom: 24 }}>
+          <h1 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 700, color: '#10192B', marginBottom: 4 }}>
             Сервисы для электромобилей
           </h1>
-          <p className="text-sm text-muted">
+          <p style={{ fontSize: 14, color: '#6B7686' }}>
             Проверенные СТО, зарядные станции и услуги для EV по всей России
           </p>
         </div>
       </div>
 
       {/* GeoIP баннер */}
-      {detectedCity && !searchParams.get('city') && !city && (
-        <div className="bg-volt-600/8 border-b border-volt-600/15">
-          <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-3 flex items-center gap-3">
-            <span className="text-base shrink-0">📍</span>
-            <p className="text-sm text-ink-900 flex-1">
-              Вы в <strong>{detectedCity}</strong> — показать сервисы в вашем городе?
+      {detectedCity && !city && !geoHidden && (
+        <div style={{ background: 'rgba(11,165,204,0.08)', borderBottom: '1px solid rgba(11,165,204,0.2)' }}>
+          <div className="max-w-[1200px] mx-auto px-4 md:px-6"
+            style={{ paddingTop: 10, paddingBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 16 }}>📍</span>
+            <p style={{ fontSize: 13, color: '#10192B', flex: 1, minWidth: 200 }}>
+              Вы в <strong>{detectedCity}</strong> — показать сервисы рядом?
             </p>
-            <button onClick={() => applyCity(detectedCity)}
-              className="text-xs font-semibold text-white bg-volt-600 px-4 py-1.5 rounded-lg hover:bg-volt-700 transition-colors shrink-0">
-              Показать
-            </button>
-            <button onClick={() => setDetectedCity(null)}
-              className="text-xs text-muted hover:text-ink-900 transition-colors shrink-0">
-              Нет
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button onClick={() => applyCity(detectedCity)} style={{
+                fontSize: 12, fontWeight: 600, color: '#fff', background: '#0BA5CC',
+                border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
+              }}>Показать</button>
+              <button onClick={() => setGeoHidden(true)} style={{
+                fontSize: 12, color: '#6B7686', background: 'none',
+                border: 'none', cursor: 'pointer', padding: '6px 0',
+              }}>Нет</button>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-6" style={{ paddingTop: 20, paddingBottom: 40 }}>
 
         {/* Строка 1: поиск + город + верифицированные */}
-        <div className="flex gap-2 mb-3">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none">🔍</span>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+
+          {/* Поиск */}
+          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 0 }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 14, color: '#B4B2A9', pointerEvents: 'none', lineHeight: 1 }}>🔍</span>
             <input
               value={searchInput}
-              onChange={e => handleSearchInput(e.target.value)}
+              onChange={e => handleSearch(e.target.value)}
               placeholder="Название, услуга, марка EV..."
-              className="w-full pl-8 pr-7 py-2.5 text-sm border border-line rounded-xl focus:outline-none focus:border-volt-600 bg-white"
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                paddingLeft: 34, paddingRight: searchInput ? 30 : 12,
+                paddingTop: 10, paddingBottom: 10,
+                fontSize: 14, border: '1px solid #DCE1E8', borderRadius: 12,
+                outline: 'none', background: '#fff', color: '#10192B',
+                WebkitAppearance: 'none',
+              }}
+              onFocus={e => { e.target.style.borderColor = '#0BA5CC'; }}
+              onBlur={e => { e.target.style.borderColor = '#DCE1E8'; }}
             />
             {searchInput && (
-              <button onClick={() => { setSearchInput(''); setSearch(''); }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink-900 text-xs">✕</button>
+              <button onClick={() => { setSearchInput(''); setSearch(''); }} style={{
+                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 12, color: '#B4B2A9', padding: 4, lineHeight: 1,
+              }}>✕</button>
             )}
           </div>
 
           {/* Город */}
-          <div className="relative shrink-0">
-            <button onClick={() => setShowCityDropdown(v => !v)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm rounded-xl border transition-all font-medium whitespace-nowrap
-                ${city ? 'border-volt-600 bg-volt-600/10 text-volt-600' : 'border-line bg-white text-muted hover:border-graphite-900/30 hover:text-ink-900'}`}>
-              📍 <span className="max-w-[90px] truncate">{city || 'Город'}</span>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => setShowCityDropdown(v => !v)} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '10px 14px', fontSize: 13, fontWeight: 500,
+              border: city ? '1px solid #0BA5CC' : '1px solid #DCE1E8',
+              borderRadius: 12, cursor: 'pointer', whiteSpace: 'nowrap',
+              background: city ? 'rgba(11,165,204,0.08)' : '#fff',
+              color: city ? '#0BA5CC' : '#6B7686',
+              WebkitAppearance: 'none',
+            }}>
+              <span>📍</span>
+              <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {city || 'Город'}
+              </span>
               {city
-                ? <span onClick={e => { e.stopPropagation(); clearCity(); }} className="ml-0.5 text-volt-600/60 hover:text-volt-600">✕</span>
-                : <span className="text-muted text-[10px]">▾</span>
+                ? <span onClick={e => { e.stopPropagation(); clearCity(); }}
+                    style={{ fontSize: 12, opacity: 0.6, cursor: 'pointer' }}>✕</span>
+                : <span style={{ fontSize: 10, color: '#B4B2A9' }}>▾</span>
               }
             </button>
+
             {showCityDropdown && (
               <>
-                <div className="fixed inset-0 z-30" onClick={() => setShowCityDropdown(false)} />
-                <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-line rounded-xl shadow-xl overflow-hidden w-52">
-                  <div className="p-2 border-b border-line">
+                <div onClick={() => setShowCityDropdown(false)}
+                  style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 40,
+                  background: '#fff', border: '1px solid #DCE1E8', borderRadius: 12,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden', width: 220,
+                }}>
+                  <div style={{ padding: 8, borderBottom: '1px solid #DCE1E8' }}>
                     <input autoFocus placeholder="Введите город..."
                       value={cityInput} onChange={e => setCityInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && cityInput.length > 1) applyCity(cityInput); }}
-                      className="w-full text-sm px-3 py-1.5 border border-line rounded-lg focus:outline-none focus:border-volt-600" />
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '7px 12px', fontSize: 13,
+                        border: '1px solid #DCE1E8', borderRadius: 8,
+                        outline: 'none', WebkitAppearance: 'none',
+                      }}
+                    />
                   </div>
-                  <div className="py-1 max-h-56 overflow-y-auto">
+                  <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
                     {detectedCity && (
-                      <button onClick={() => applyCity(detectedCity)}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-paper-50 flex items-center gap-2 border-b border-line">
-                        <span className="text-volt-600">📍</span>
-                        <span className="font-medium text-ink-900">{detectedCity}</span>
-                        <span className="text-xs text-muted ml-auto">Ваш</span>
+                      <button onClick={() => applyCity(detectedCity)} style={{
+                        width: '100%', textAlign: 'left', padding: '9px 16px',
+                        fontSize: 13, cursor: 'pointer', background: 'none', border: 'none',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        borderBottom: '1px solid #DCE1E8', color: '#10192B',
+                      }}>
+                        <span style={{ color: '#0BA5CC' }}>📍</span>
+                        <strong>{detectedCity}</strong>
+                        <span style={{ fontSize: 11, color: '#B4B2A9', marginLeft: 'auto' }}>Ваш</span>
                       </button>
                     )}
                     {CITIES.filter(c => c !== detectedCity && c.toLowerCase().includes(cityInput.toLowerCase())).map(c => (
-                      <button key={c} onClick={() => applyCity(c)}
-                        className="w-full text-left px-4 py-2 text-sm text-muted hover:text-ink-900 hover:bg-paper-50 transition-colors">
+                      <button key={c} onClick={() => applyCity(c)} style={{
+                        width: '100%', textAlign: 'left', padding: '8px 16px',
+                        fontSize: 13, cursor: 'pointer', background: 'none', border: 'none',
+                        color: '#6B7686', display: 'block',
+                      }}
+                      onMouseEnter={e => { (e.target as HTMLElement).style.background = '#F9F8F5'; }}
+                      onMouseLeave={e => { (e.target as HTMLElement).style.background = 'none'; }}>
                         {c}
                       </button>
                     ))}
@@ -341,52 +407,69 @@ function ServicesContent() {
           </div>
 
           {/* Верифицированные */}
-          <button onClick={() => setOnlyVerified(v => !v)}
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-sm rounded-xl border transition-all font-medium whitespace-nowrap
-              ${onlyVerified ? 'border-green-500 bg-green-50 text-green-700' : 'border-line bg-white text-muted hover:border-graphite-900/30 hover:text-ink-900'}`}>
-            ✅ <span className="hidden sm:inline">Проверенные</span>
+          <button onClick={() => setOnlyVerified(v => !v)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '10px 14px', fontSize: 13, fontWeight: 500,
+            border: onlyVerified ? '1px solid #22C55E' : '1px solid #DCE1E8',
+            borderRadius: 12, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+            background: onlyVerified ? '#F0FDF4' : '#fff',
+            color: onlyVerified ? '#15803D' : '#6B7686',
+            WebkitAppearance: 'none',
+          }}>
+            ✅
+            <span className="hidden sm:inline">Проверенные</span>
           </button>
         </div>
 
-        {/* Строка 2: категории — скролл с подписями */}
-        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-5 -mx-4 px-4 md:mx-0 md:px-0"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <button onClick={() => setActiveCategory('')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all shrink-0 whitespace-nowrap
-              ${!activeCategory ? 'bg-ink-900 text-white border-ink-900' : 'bg-white border-line text-muted hover:border-graphite-900/30 hover:text-ink-900'}`}>
+        {/* Строка 2: категории */}
+        <div style={{ ...scrollStyle, display: 'flex', gap: 6, paddingBottom: 4, marginBottom: 16 }}>
+          <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
+
+          {/* Все */}
+          <button onClick={() => setActiveCategory('')} style={{
+            display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+            padding: '8px 14px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+            border: !activeCategory ? '1px solid #0B1220' : '1px solid #DCE1E8',
+            borderRadius: 20, cursor: 'pointer',
+            background: !activeCategory ? '#0B1220' : '#fff',
+            color: !activeCategory ? '#fff' : '#6B7686',
+          }}>
             Все
-            <span className={`text-[10px] ${!activeCategory ? 'text-white/50' : 'text-muted'}`}>{providers.length}</span>
+            <span style={{ fontSize: 10, opacity: 0.6 }}>{providers.length}</span>
           </button>
 
-          {cityCounts.map(cat => (
+          {catCounts.map(cat => (
             <button key={cat.id}
-              onClick={() => setActiveCategory(activeCategory === cat.slug ? '' : cat.slug)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all shrink-0 whitespace-nowrap
-                ${activeCategory === cat.slug
-                  ? 'bg-ink-900 text-white border-ink-900'
-                  : 'bg-white border-line text-muted hover:border-graphite-900/30 hover:text-ink-900'
-                }`}>
-              <span className="text-sm leading-none">{CAT_ICONS[cat.slug] || '🏪'}</span>
+              onClick={() => setActiveCategory(activeCategory === cat.slug ? '' : cat.slug)} style={{
+                display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                padding: '8px 14px', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+                border: activeCategory === cat.slug ? '1px solid #0B1220' : '1px solid #DCE1E8',
+                borderRadius: 20, cursor: 'pointer',
+                background: activeCategory === cat.slug ? '#0B1220' : '#fff',
+                color: activeCategory === cat.slug ? '#fff' : '#6B7686',
+              }}>
+              <span style={{ fontSize: 14, lineHeight: 1 }}>{CAT_ICONS[cat.slug] || '🏪'}</span>
               {cat.name}
-              <span className={`text-[10px] ${activeCategory === cat.slug ? 'text-white/50' : 'text-muted'}`}>{cat.count}</span>
+              <span style={{ fontSize: 10, opacity: 0.6 }}>{cat.count}</span>
             </button>
           ))}
         </div>
 
-        {/* Счётчик результатов */}
+        {/* Счётчик и сброс */}
         {!loading && (
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted">
-              {totalCount === 0 ? 'Ничего не найдено' :
-                `${totalCount} ${totalCount === 1 ? 'сервис' : totalCount < 5 ? 'сервиса' : 'сервисов'}`}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: '#6B7686' }}>
+              {filtered.length === 0 ? 'Ничего не найдено'
+                : `${filtered.length} ${filtered.length === 1 ? 'сервис' : filtered.length < 5 ? 'сервиса' : 'сервисов'}`
+              }
               {city ? ` в ${city}` : ''}
-              {search ? ` по запросу «${search}»` : ''}
+              {search ? ` · «${search}»` : ''}
             </p>
-            {(city || search || activeCategory || onlyVerified) && (
-              <button onClick={() => {
-                setSearch(''); setSearchInput(''); setActiveCategory('');
-                clearCity(); setOnlyVerified(false);
-              }} className="text-xs text-muted hover:text-ink-900 underline underline-offset-2">
+            {hasFilters && (
+              <button onClick={clearAll} style={{
+                fontSize: 12, color: '#6B7686', background: 'none', border: 'none',
+                cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2,
+              }}>
                 Сбросить фильтры
               </button>
             )}
@@ -395,86 +478,101 @@ function ServicesContent() {
 
         {/* Скелетон */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div style={{ display: 'grid', gap: 16,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))' }}>
             {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} />)}
           </div>
         )}
 
         {/* Пусто */}
-        {!loading && totalCount === 0 && (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4 opacity-20">🔍</div>
-            <h3 className="text-lg font-semibold text-ink-900 mb-2">Ничего не найдено</h3>
-            <p className="text-sm text-muted mb-5">
+        {!loading && filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.2 }}>🔍</div>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#10192B', marginBottom: 8 }}>Ничего не найдено</h3>
+            <p style={{ fontSize: 13, color: '#6B7686', marginBottom: 20 }}>
               {city ? `Нет сервисов в ${city} по вашему запросу` : 'Попробуйте изменить параметры поиска'}
             </p>
-            <div className="flex gap-3 justify-center flex-wrap">
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               {city && (
-                <button onClick={clearCity}
-                  className="text-sm text-volt-600 border border-volt-600/30 px-4 py-2 rounded-xl hover:bg-volt-600/5 transition-colors">
-                  Показать по всей России
-                </button>
+                <button onClick={clearCity} style={{
+                  fontSize: 13, color: '#0BA5CC', background: 'none',
+                  border: '1px solid rgba(11,165,204,0.4)', borderRadius: 10,
+                  padding: '8px 16px', cursor: 'pointer',
+                }}>Показать по всей России</button>
               )}
               {(search || activeCategory) && (
-                <button onClick={() => { setSearch(''); setSearchInput(''); setActiveCategory(''); }}
-                  className="text-sm text-muted border border-line px-4 py-2 rounded-xl hover:bg-paper-50 transition-colors">
-                  Сбросить поиск
-                </button>
+                <button onClick={() => { setSearch(''); setSearchInput(''); setActiveCategory(''); }} style={{
+                  fontSize: 13, color: '#6B7686', background: 'none',
+                  border: '1px solid #DCE1E8', borderRadius: 10,
+                  padding: '8px 16px', cursor: 'pointer',
+                }}>Сбросить поиск</button>
               )}
             </div>
           </div>
         )}
 
-        {/* Сетка — с разделением по городу */}
-        {!loading && totalCount > 0 && city && inCity.length > 0 && (
+        {/* Сетка — responsive auto-fill */}
+        {!loading && filtered.length > 0 && (
           <>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-xs font-semibold text-muted uppercase tracking-wider">
-                📍 В {city}
-              </span>
-              <div className="flex-1 h-px bg-line" />
-              <span className="text-xs text-muted">{inCity.length}</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-              {inCity.map(p => <ProviderCard key={p.id} p={p} q={search} />)}
-            </div>
-
-            {outCity.length > 0 && (
+            {city && inCity.length > 0 ? (
               <>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-xs font-semibold text-muted uppercase tracking-wider">
-                    🗺 Другие города
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7686', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                    📍 В {city}
                   </span>
-                  <div className="flex-1 h-px bg-line" />
-                  <span className="text-xs text-muted">{outCity.length}</span>
+                  <div style={{ flex: 1, height: 1, background: '#DCE1E8' }} />
+                  <span style={{ fontSize: 11, color: '#B4B2A9' }}>{inCity.length}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {outCity.map(p => <ProviderCard key={p.id} p={p} q={search} />)}
+                <div style={{ display: 'grid', gap: 14, marginBottom: 24,
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))' }}>
+                  {inCity.map(p => <ProviderCard key={p.id} p={p} q={search} />)}
                 </div>
+
+                {outCity.length > 0 && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7686', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                        🗺 Другие города
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: '#DCE1E8' }} />
+                      <span style={{ fontSize: 11, color: '#B4B2A9' }}>{outCity.length}</span>
+                    </div>
+                    <div style={{ display: 'grid', gap: 14,
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))' }}>
+                      {outCity.map(p => <ProviderCard key={p.id} p={p} q={search} />)}
+                    </div>
+                  </>
+                )}
               </>
+            ) : (
+              <div style={{ display: 'grid', gap: 14,
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))' }}>
+                {filtered.map(p => <ProviderCard key={p.id} p={p} q={search} />)}
+              </div>
             )}
           </>
         )}
 
-        {/* Сетка без разделения */}
-        {!loading && totalCount > 0 && (!city || inCity.length === 0) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map(p => <ProviderCard key={p.id} p={p} q={search} />)}
-          </div>
-        )}
-
-        {/* CTA для партнёров */}
+        {/* CTA */}
         {!loading && (
-          <div className="mt-12 bg-ink-900 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
-            <div className="flex-1 text-center md:text-left">
-              <h3 className="text-white font-bold text-lg mb-1">Ваш сервис здесь</h3>
-              <p className="text-sm" style={{ color: '#B7C0D1' }}>
+          <div style={{
+            marginTop: 48, background: '#0B1220', borderRadius: 20,
+            padding: 'clamp(20px, 4vw, 32px)',
+            display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <h3 style={{ color: '#fff', fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
+                Ваш сервис здесь
+              </h3>
+              <p style={{ fontSize: 13, color: '#B7C0D1' }}>
                 Разместите страницу бесплатно и получайте заявки от владельцев EV
               </p>
             </div>
-            <a href="/partner"
-              className="shrink-0 px-6 py-3 rounded-xl text-sm font-semibold transition-colors"
-              style={{ background: '#3DDBFF', color: '#0B1220' }}>
+            <a href="/partner" style={{
+              flexShrink: 0, padding: '12px 24px', borderRadius: 12,
+              fontSize: 14, fontWeight: 600, textDecoration: 'none',
+              background: '#3DDBFF', color: '#0B1220', whiteSpace: 'nowrap',
+            }}>
               Разместить сервис →
             </a>
           </div>
@@ -488,8 +586,8 @@ export default function ServicesPage() {
   return (
     <Suspense fallback={
       <div className="max-w-[1200px] mx-auto px-4 py-8">
-        <div className="h-8 bg-paper-50 rounded-lg w-64 animate-pulse mb-6" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div style={{ display: 'grid', gap: 14,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))' }}>
           {[1,2,3,4].map(i => <Skeleton key={i} />)}
         </div>
       </div>
