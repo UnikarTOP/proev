@@ -68,6 +68,8 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     restart: unless-stopped
+    environment:
+      INTERNAL_API_URL: http://backend:3001/api
     depends_on:
       - backend
     networks:

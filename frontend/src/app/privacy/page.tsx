@@ -1,12 +1,15 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
-const SLUG = 'privacy';
+const SLUG =  + slug + ;
 
-interface PageData { slug: string; title: string; description?: string; content: string; updatedAt: string; }
+interface PageData {
+  slug: string; title: string; description?: string;
+  content: string; updatedAt: string;
+}
 
 async function getPage(): Promise<PageData | null> {
-  const api = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:3001/api';
+  const api = process.env.INTERNAL_API_URL || 'http://backend:3001/api';
   try {
     const res = await fetch(`${api}/pages/${SLUG}`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
@@ -17,22 +20,28 @@ async function getPage(): Promise<PageData | null> {
 export async function generateMetadata(): Promise<Metadata> {
   const data = await getPage();
   if (!data) return { title: 'proev.ru' };
-  return { title: data.title, description: data.description,
-    openGraph: { title: data.title, description: data.description } };
+  return {
+    title: data.title,
+    description: data.description,
+    openGraph: { title: data.title, description: data.description },
+  };
 }
 
-export default async function StaticPage() {
+export default async function Page() {
   const data = await getPage();
   if (!data) notFound();
   return (
     <div className="max-w-[800px] mx-auto px-4 md:px-6 py-10 md:py-14">
-      <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: data.content }} />
-      {data.updatedAt && (
-        <p className="text-xs text-muted mt-10 pt-6 border-t border-line">
-          Последнее обновление:{' '}
-          {new Date(data.updatedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
-      )}
+      <div
+        className="prose max-w-none"
+        dangerouslySetInnerHTML={{ __html: data.content }}
+      />
+      <p className="text-xs text-muted mt-10 pt-6 border-t border-line">
+        Последнее обновление:{' '}
+        {new Date(data.updatedAt).toLocaleDateString('ru-RU', {
+          day: 'numeric', month: 'long', year: 'numeric',
+        })}
+      </p>
     </div>
   );
 }
