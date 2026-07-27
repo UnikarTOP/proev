@@ -226,7 +226,7 @@ function ServicesContent() {
   };
 
   const applyCity = (c: string) => {
-    setCity(c); setShowCityDropdown(false); setCityInput(''); setGeoHidden(true);
+    setCity(c); setGeoHidden(true);
     document.cookie = `proev_city=${encodeURIComponent(c)};max-age=${7 * 86400};path=/`;
   };
 
