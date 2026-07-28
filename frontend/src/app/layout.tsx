@@ -23,10 +23,20 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: '/apple-touch-icon.svg',
+    apple: [
+      { url: '/icons/icon-192.png', sizes: '192x192' },
+    ],
     shortcut: '/favicon.svg',
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'proev.ru',
+  },
+  themeColor: '#0B1220',
 };
 
 const METRIKA_ID = process.env.NEXT_PUBLIC_METRIKA_ID;
