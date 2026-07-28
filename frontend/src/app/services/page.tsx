@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import CitySelect from '@/components/CitySelect';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -170,16 +170,20 @@ function Skeleton() {
 
 // Основной контент
 function ServicesContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  // Читаем URL параметры безопасно только на клиенте
+  const [searchParams, setSearchParamsState] = useState<URLSearchParams>(new URLSearchParams());
+  useEffect(() => {
+    setSearchParamsState(new URLSearchParams(window.location.search));
+  }, []);
 
   const [providers, setProviders] = useState<Provider[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(searchParams.get('q') || '');
-  const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
-  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || '');
-  const [city, setCity] = useState(searchParams.get('city') || '');
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [activeCategory, setActiveCategory] = useState('');
+  const [city, setCity] = useState('');
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [geoHidden, setGeoHidden] = useState(false);
@@ -512,16 +516,5 @@ function ServicesContent() {
 }
 
 export default function ServicesPage() {
-  return (
-    <Suspense fallback={
-      <div className="max-w-[1200px] mx-auto px-4 py-8">
-        <div style={{ display: 'grid', gap: 14,
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))' }}>
-          {[1,2,3,4].map(i => <Skeleton key={i} />)}
-        </div>
-      </div>
-    }>
-      <ServicesContent />
-    </Suspense>
-  );
+  return <ServicesContent />;
 }
