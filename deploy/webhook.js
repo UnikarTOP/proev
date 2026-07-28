@@ -20,7 +20,7 @@ function verify(req, body) {
 function deploy() {
   log('=== Начинаем деплой ===');
   var cmd = 'cd ' + REPO_DIR + ' && git fetch origin && git reset --hard origin/main && cd ' + INFRA_DIR + ' && docker compose build --no-cache && docker compose up -d';
-  exec(cmd, { timeout: 600000 }, function(err, stdout, stderr) {
+  exec(cmd, { timeout: 600000 }, function(err) {
     if (err) log('Ошибка: ' + err.message);
     else log('=== Деплой завершён ===');
   });
@@ -42,8 +42,9 @@ http.createServer(function(req, res) {
     var payload;
     try { payload = JSON.parse(body); } catch(e) { res.writeHead(400); return res.end('Bad JSON'); }
     var event = req.headers['x-github-event'];
+    var pusher = payload.pusher ? payload.pusher.name : 'unknown';
     if (event === 'push' && payload.ref === 'refs/heads/main') {
-      log('Push — запускаем деплой');
+      log('Push от ' + pusher + ' — запускаем деплой');
       res.writeHead(200);
       res.end('Deploying...');
       setTimeout(deploy, 100);
