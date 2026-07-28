@@ -590,7 +590,6 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
           </div>
         </div>
       </div>
-    </div>
 
       {/* Плавающая кнопка звонка на мобильном */}
       {provider.phone && (
@@ -604,5 +603,6 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
           📞 Позвонить
         </a>
       )}
+    </div>
   );
 }
