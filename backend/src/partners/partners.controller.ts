@@ -368,9 +368,8 @@ export class PartnersController {
 
     return { ok: true };
   }
-}
 
-  /** POST /api/partners/test-email — тест SMTP (только для отладки, удалить после проверки) */
+  /** POST /api/partners/test-email — тест SMTP */
   @Post('test-email')
   async testEmail(@Body() body: { to: string }) {
     const host = process.env.SMTP_HOST;
@@ -405,3 +404,4 @@ export class PartnersController {
       return { ok: false, error: (err as Error).message };
     }
   }
+}
