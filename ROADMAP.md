@@ -171,5 +171,4 @@
 4. **Счётчик просмотров** — метрика ценности для партнёров
 5. **Rate limiting** — безопасность
 
-# webhook test Tue Jul 28 05:42:49 UTC 2026
-# deploy test Tue Jul 28 05:52:19 UTC 2026
+# Auto-deploy configured Tue Jul 28 05:40:56 UTC 2026

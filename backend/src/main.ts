@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import * as bcrypt from 'bcryptjs';
+import * as nodemailer from 'nodemailer';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 
@@ -205,17 +206,17 @@ async function mountAdmin(app: any) {
                 const smtpPass = process.env.SMTP_PASS;
 
                 if (smtpHost && smtpUser && smtpPass) {
-                  const nodemailerMod = await import('nodemailer');
-                  const transporter = nodemailerMod.default.createTransport({
-                    host: smtpHost,
-                    port: parseInt(process.env.SMTP_PORT || '465'),
-                    secure: parseInt(process.env.SMTP_PORT || '465') === 465,
-                    auth: { user: smtpUser, pass: smtpPass },
-                  });
-                  await transporter.sendMail({
-                    from: process.env.SMTP_FROM || `proev.ru <${smtpUser}>`,
-                    to: app.email,
-                    subject: 'Ваша заявка одобрена — proev.ru',
+                  try {
+                    const transporter = nodemailer.createTransport({
+                      host: smtpHost,
+                      port: parseInt(process.env.SMTP_PORT || '465'),
+                      secure: parseInt(process.env.SMTP_PORT || '465') === 465,
+                      auth: { user: smtpUser, pass: smtpPass },
+                    });
+                    await transporter.sendMail({
+                      from: process.env.SMTP_FROM || `proev.ru <${smtpUser}>`,
+                      to: app.email,
+                      subject: 'Ваша заявка одобрена — proev.ru',
                     html: `
                     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#10192B">
                       <div style="font-size:22px;font-weight:700;margin-bottom:4px">
@@ -270,7 +271,13 @@ async function mountAdmin(app: any) {
                       </div>
                     </div>
                     `,
-                  }).catch((e: Error) => console.error('Email ошибка:', e.message));
+                    });
+                    console.log(`[AdminJS] Email одобрения отправлен на ${app.email}`);
+                  } catch (emailErr) {
+                    console.error(`[AdminJS] Ошибка отправки email: ${(emailErr as Error).message}`);
+                  }
+                } else {
+                  console.warn('[AdminJS] SMTP не настроен — email партнёру не отправлен');
                 }
 
                 return {

@@ -43,54 +43,65 @@ export class NotificationsService {
   // ── Уведомление партнёру о новой заявке ─────────────────────────────────────
 
   async notifyPartnerNewLead(leadId: string) {
-    const lead = await this.prisma.lead.findUnique({
-      where: { id: leadId },
-      include: { provider: { include: { owner: true } } },
-    });
-    if (!lead?.provider?.owner?.email) return;
+    try {
+      const lead = await this.prisma.lead.findUnique({
+        where: { id: leadId },
+        include: { provider: { include: { owner: true } } },
+      });
 
-    const { name, phone, message, provider } = lead;
-    const cabinetUrl = `${process.env.SITE_URL || 'https://proev.ru'}/partner/cabinet`;
+      if (!lead) {
+        this.logger.warn(`notifyPartnerNewLead: лид ${leadId} не найден`);
+        return;
+      }
 
-    await this.sendEmail(
-      lead.provider.owner.email,
-      `Новая заявка от ${name} — proev.ru`,
-      `
-      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#10192B">
-        <div style="font-size:22px;font-weight:700;margin-bottom:4px">proev<span style="color:#0BA5CC">.ru</span></div>
-        <div style="font-size:12px;color:#6B7686;margin-bottom:24px">Платформа для владельцев электромобилей</div>
+      if (!lead.provider) {
+        this.logger.warn(`notifyPartnerNewLead: у лида ${leadId} нет провайдера`);
+        return;
+      }
 
-        <h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Новая заявка на вашей странице</h2>
+      const partnerEmail = lead.provider.owner?.email;
+      if (!partnerEmail) {
+        this.logger.warn(`notifyPartnerNewLead: у провайдера ${lead.provider.id} нет email владельца`);
+        return;
+      }
 
-        <div style="background:#F9F8F5;border-radius:12px;padding:16px 20px;margin-bottom:20px">
-          <table style="width:100%;font-size:14px">
-            <tr><td style="color:#6B7686;padding:6px 0;width:120px">Имя</td><td style="font-weight:500">${name}</td></tr>
-            <tr><td style="color:#6B7686;padding:6px 0">Телефон</td><td><a href="tel:${phone}" style="color:#0BA5CC;font-weight:500">${phone}</a></td></tr>
-            ${message ? `<tr><td style="color:#6B7686;padding:6px 0;vertical-align:top">Сообщение</td><td>${message}</td></tr>` : ''}
-          </table>
+      const { name, phone, message, provider } = lead;
+      const cabinetUrl = `${process.env.SITE_URL || 'https://proev.ru'}/partner/cabinet`;
+
+      await this.sendEmail(
+        partnerEmail,
+        `Новая заявка от ${name} — proev.ru`,
+        `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#10192B">
+          <div style="font-size:22px;font-weight:700;margin-bottom:4px">proev<span style="color:#0BA5CC">.ru</span></div>
+          <div style="font-size:12px;color:#6B7686;margin-bottom:24px">Платформа для владельцев электромобилей</div>
+          <h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Новая заявка на вашей странице</h2>
+          <div style="background:#F9F8F5;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+            <table style="width:100%;font-size:14px">
+              <tr><td style="color:#6B7686;padding:6px 0;width:120px">Имя</td><td style="font-weight:500">${name}</td></tr>
+              <tr><td style="color:#6B7686;padding:6px 0">Телефон</td><td><a href="tel:${phone}" style="color:#0BA5CC;font-weight:500">${phone}</a></td></tr>
+              ${message ? `<tr><td style="color:#6B7686;padding:6px 0;vertical-align:top">Сообщение</td><td>${message}</td></tr>` : ''}
+            </table>
+          </div>
+          <a href="${cabinetUrl}" style="display:inline-block;background:#0B1220;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;margin-bottom:24px">
+            Открыть в кабинете →
+          </a>
+          <div style="font-size:12px;color:#B4B2A9;border-top:0.5px solid #DCE1E8;padding-top:16px">
+            Страница сервиса: <a href="${process.env.SITE_URL || 'https://proev.ru'}/services/${provider.slug}" style="color:#0BA5CC">${provider.name}</a>
+          </div>
         </div>
+        `,
+      );
 
-        <a href="${cabinetUrl}" style="display:inline-block;background:#0B1220;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;margin-bottom:24px">
-          Открыть в кабинете →
-        </a>
+      // Вебхуки
+      this.triggerWebhooks(lead.provider.id, 'lead.created', {
+        id: lead.id, name: lead.name, phone: lead.phone,
+        message: lead.message, status: lead.status, createdAt: lead.createdAt,
+      }).catch(e => this.logger.error('Webhook error:', e));
 
-        <div style="font-size:12px;color:#B4B2A9;border-top:0.5px solid #DCE1E8;padding-top:16px">
-          Вы получили это письмо потому что являетесь партнёром proev.ru.<br>
-          Страница сервиса: <a href="${process.env.SITE_URL}/services/${provider.slug}" style="color:#0BA5CC">${provider.name}</a>
-        </div>
-      </div>
-      `,
-    );
-
-    // Запускаем вебхуки асинхронно
-    this.triggerWebhooks(lead.provider.id, 'lead.created', {
-      id: lead.id,
-      name: lead.name,
-      phone: lead.phone,
-      message: lead.message,
-      status: lead.status,
-      createdAt: lead.createdAt,
-    }).catch(e => this.logger.error('Webhook error:', e));
+    } catch (err) {
+      this.logger.error(`notifyPartnerNewLead ошибка: ${(err as Error).message}`);
+    }
   }
 
   // ── Уведомление об изменении статуса ─────────────────────────────────────────

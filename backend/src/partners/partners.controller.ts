@@ -369,3 +369,39 @@ export class PartnersController {
     return { ok: true };
   }
 }
+
+  /** POST /api/partners/test-email — тест SMTP (только для отладки, удалить после проверки) */
+  @Post('test-email')
+  async testEmail(@Body() body: { to: string }) {
+    const host = process.env.SMTP_HOST;
+    const port = parseInt(process.env.SMTP_PORT || '465');
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM || user;
+
+    if (!host || !user || !pass) {
+      return {
+        ok: false,
+        error: 'SMTP не настроен',
+        vars: { SMTP_HOST: host || 'НЕТ', SMTP_USER: user || 'НЕТ', SMTP_PASS: pass ? '***' : 'НЕТ' },
+      };
+    }
+
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host, port, secure: port === 465,
+      auth: { user, pass },
+    });
+
+    try {
+      await transporter.verify();
+      await transporter.sendMail({
+        from, to: body.to,
+        subject: 'Тест SMTP — proev.ru',
+        html: '<p>Если вы получили это письмо — SMTP работает корректно ✅</p>',
+      });
+      return { ok: true, message: `Письмо отправлено на ${body.to}` };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+  }

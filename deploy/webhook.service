@@ -1,0 +1,17 @@
+[Unit]
+Description=proev.ru GitHub Webhook Auto-deploy
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/unikar/proev/deploy
+ExecStart=/usr/bin/node /home/unikar/proev/deploy/webhook.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=WEBHOOK_SECRET=__SECRET__
+
+[Install]
+WantedBy=multi-user.target
