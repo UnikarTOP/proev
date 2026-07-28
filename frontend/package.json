@@ -21,7 +21,8 @@
     "@tiptap/extension-placeholder": "^2.4.0",
     "@tiptap/extension-character-count": "^2.4.0",
     "@tiptap/extension-underline": "^2.4.0",
-    "@tiptap/extension-text-align": "^2.4.0"
+    "@tiptap/extension-text-align": "^2.4.0",
+    "@tailwindcss/typography": "^0.5.13"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
