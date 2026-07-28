@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Patch, Body, Headers, Param,
+  Controller, Post, Get, Patch, Body, Headers, Param, Request,
   UnauthorizedException, NotFoundException, BadRequestException,
 } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
@@ -118,19 +118,6 @@ export class PartnersController {
       });
       if (!user || user.role !== 'partner') throw new Error();
       return user;
-    } catch {}
-
-    // Обратная совместимость: старый base64 токен (временно, удалить в v0.3)
-    try {
-      const decoded = Buffer.from(token, 'base64').toString();
-      const userId = decoded.split(':')[1];
-      if (userId) {
-        const user = await this.prisma.user.findUnique({
-          where: { id: userId },
-          include: { managedProviders: { include: { category: true } } },
-        });
-        if (user?.role === 'partner') return user;
-      }
     } catch {}
 
     throw new UnauthorizedException('Недействительный или просроченный токен. Войдите заново.');
@@ -369,9 +356,14 @@ export class PartnersController {
     return { ok: true };
   }
 
-  /** POST /api/partners/test-email — тест SMTP */
+  /** POST /api/partners/test-email — тест SMTP (только с локального IP) */
   @Post('test-email')
-  async testEmail(@Body() body: { to: string }) {
+  async testEmail(@Body() body: { to: string }, @Headers('x-real-ip') xRealIp: string, @Request() req: any) {
+    const ip = xRealIp || req.socket?.remoteAddress || '';
+    const allowed = ['127.0.0.1', '::1', '192.168.38.200', '::ffff:192.168.38.200'];
+    if (!allowed.some(a => ip.includes(a))) {
+      return { error: 'Forbidden' };
+    }
     const host = process.env.SMTP_HOST;
     const port = parseInt(process.env.SMTP_PORT || '465');
     const user = process.env.SMTP_USER;

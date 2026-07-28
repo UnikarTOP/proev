@@ -22,7 +22,8 @@
     "@tiptap/extension-character-count": "^2.4.0",
     "@tiptap/extension-underline": "^2.4.0",
     "@tiptap/extension-text-align": "^2.4.0",
-    "@tailwindcss/typography": "^0.5.13"
+    "@tailwindcss/typography": "^0.5.13",
+    "dompurify": "^3.1.6"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
@@ -30,6 +31,7 @@
     "@types/node": "^20.14.0",
     "tailwindcss": "^3.4.0",
     "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0"
+    "autoprefixer": "^10.4.0",
+    "@types/dompurify": "^3.0.5"
   }
 }

@@ -4,8 +4,29 @@ import './globals.css';
 import MobileNav from '@/components/MobileNav';
 
 export const metadata: Metadata = {
-  title: 'proev.ru — всё для владельцев электромобилей в России',
-  description: 'Карта зарядных станций, сервисы для электромобилей, сообщество и советы для владельцев EV в России.',
+  title: {
+    default: 'proev.ru — карта зарядок и сервисы для электромобилей в России',
+    template: '%s — proev.ru',
+  },
+  description: 'Карта зарядных станций, каталог EV-сервисов, новости об электромобилях. Всё для владельцев электромобилей в России.',
+  keywords: ['электромобили', 'зарядные станции', 'EV сервис', 'карта зарядок', 'электрокары Россия'],
+  authors: [{ name: 'proev.ru', url: 'https://proev.ru' }],
+  metadataBase: new URL('https://proev.ru'),
+  openGraph: {
+    type: 'website',
+    locale: 'ru_RU',
+    url: 'https://proev.ru',
+    siteName: 'proev.ru',
+    title: 'proev.ru — карта зарядок и сервисы для электромобилей',
+    description: 'Карта зарядных станций, каталог EV-сервисов, новости об электромобилях в России.',
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/apple-touch-icon.svg',
+    shortcut: '/favicon.svg',
+  },
 };
 
 const METRIKA_ID = process.env.NEXT_PUBLIC_METRIKA_ID;

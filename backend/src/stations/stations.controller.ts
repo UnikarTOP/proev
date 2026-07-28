@@ -78,9 +78,14 @@ export class StationsController {
     return this.stationsService.reportStatus(id, dto);
   }
 
-  /** POST /api/stations/sync/osm — ручной запуск синхронизации OSM */
+  /** POST /api/stations/sync/osm — ручной запуск (только с локального IP) */
   @Post('sync/osm')
-  syncOsm() {
+  syncOsm(@Req() req: any) {
+    const ip = req.headers['x-real-ip'] || req.socket?.remoteAddress || '';
+    const allowed = ['127.0.0.1', '::1', '192.168.38.200', '::ffff:192.168.38.200'];
+    if (!allowed.some(a => ip.includes(a))) {
+      return { error: 'Forbidden' };
+    }
     return this.syncService.syncOsm();
   }
 }

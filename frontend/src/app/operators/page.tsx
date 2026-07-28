@@ -51,6 +51,7 @@ const OPERATORS = [
 
 export default function OperatorsPage() {
   const [form, setForm] = useState({ company: '', name: '', phone: '', email: '', stationsCount: '', comment: '' });
+  const [consent, setConsent] = useState(false);
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -293,16 +294,24 @@ export default function OperatorsPage() {
                   rows={3} className={`${inp} resize-none`} />
               </div>
 
-              <button onClick={submit} disabled={loading || !form.company || !form.email || !form.phone}
+              <div className="flex items-start gap-3">
+                <input type="checkbox" id="consent" checked={consent}
+                  onChange={e => setConsent(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-volt-600 cursor-pointer flex-shrink-0" />
+                <label htmlFor="consent" className="text-xs text-muted leading-relaxed cursor-pointer">
+                  Согласен на обработку персональных данных в соответствии с{' '}
+                  <a href="/privacy" className="underline underline-offset-2 hover:text-ink-900">
+                    политикой конфиденциальности
+                  </a>{' '}
+                  и Федеральным законом № 152-ФЗ
+                </label>
+              </div>
+
+              <button onClick={submit} disabled={loading || !form.company || !form.email || !form.phone || !consent}
                 className="w-full py-3.5 bg-ink-900 text-white rounded-xl text-sm font-semibold hover:bg-ink-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
                 {loading && <span className="animate-spin">⟳</span>}
                 Отправить заявку
               </button>
-
-              <p className="text-[11px] text-muted text-center leading-relaxed">
-                Нажимая кнопку, вы соглашаетесь с{' '}
-                <a href="/privacy" className="underline underline-offset-2 hover:text-ink-900">политикой конфиденциальности</a>
-              </p>
             </div>
           )}
         </div>

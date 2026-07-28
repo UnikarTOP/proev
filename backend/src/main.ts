@@ -17,7 +17,17 @@ const dynamicImport = new Function('specifier', 'return import(specifier)') as (
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      process.env.SITE_URL || 'https://proev.ru',
+      'https://www.proev.ru',
+      // Dev окружение
+      'http://localhost:3000',
+      'http://192.168.38.200:3000',
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useStaticAssets(UPLOADS_DIR, { prefix: '/uploads' });
   await mountAdmin(app);
