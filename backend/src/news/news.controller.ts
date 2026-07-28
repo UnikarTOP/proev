@@ -1,5 +1,4 @@
-import { Controller, Get, Post, Param, Query, NotFoundException } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Controller, Get, Post, Param, Query } from '@nestjs/common';
 import { NewsService } from './news.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,43 +10,33 @@ export class NewsController {
   ) {}
 
   // GET /api/news?limit=20&offset=0
-  @SkipThrottle()
   @Get()
   getLatest(
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
     return this.newsService.getLatest(
-      limit ? Math.min(parseInt(limit), 100) : 20, // максимум 100
+      limit ? parseInt(limit) : 20,
       offset ? parseInt(offset) : 0,
     );
   }
 
-  // GET /api/news/slug/:slug — по slug для SEO страницы
-  @SkipThrottle()
-  @Get('slug/:slug')
-  async getBySlug(@Param('slug') slug: string) {
-    const item = await this.prisma.newsItem.findFirst({
-      where: { slug, status: 'approved' },
-    });
-    if (!item) throw new NotFoundException('Новость не найдена');
-    return item;
-  }
-
   // GET /api/news/:id
-  @SkipThrottle()
   @Get(':id')
   getOne(@Param('id') id: string) {
     return this.newsService.getOne(id);
   }
 
   // POST /api/news/fetch/:sourceId
+  // Ручной тригер — кнопка "Обновить сейчас" в AdminJS или Postman-проверка.
+  // TODO: добавить auth-guard (только admin) когда появится авторизация.
   @Post('fetch/:sourceId')
   async fetchNow(@Param('sourceId') sourceId: string) {
     const source = await this.prisma.newsSource.findUnique({
       where: { id: sourceId },
     });
     if (!source) return { error: 'Источник не найден' };
+
     await this.newsService.fetchSource(source.id, source.feedUrl, source.name);
     return { ok: true, message: `Источник "${source.name}" обновлён` };
   }

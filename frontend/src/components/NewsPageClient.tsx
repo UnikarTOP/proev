@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 interface NewsItem {
   id: string;
-  slug?: string;
   title: string;
   excerpt?: string;
   sourceUrl: string;
@@ -49,11 +48,6 @@ function readTime(text?: string): string {
   const words = text.trim().split(/\s+/).length;
   const mins = Math.max(1, Math.round(words / 200));
   return `~${mins} мин`;
-}
-
-
-function newsUrl(item: { id: string; slug?: string }) {
-  return `/news/${item.slug || item.id}`;
 }
 
 function getDomain(url: string): string {
@@ -175,9 +169,6 @@ function ShareButton({ url, title }: { url: string; title: string }) {
 
 export default function NewsPageClient() {
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const LIMIT = 20;
   const [loading, setLoading] = useState(true);
   const [categoryIdx, setCategoryIdx] = useState(0);
   const [page, setPage] = useState(1);
@@ -310,7 +301,7 @@ export default function NewsPageClient() {
               <p className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-3">Свежее</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {featured.map((item) => (
-                  <a key={item.id} href={newsUrl(item)}
+                  <a key={item.id} href={item.sourceUrl} target="_blank" rel="noopener noreferrer"
                     className="group block bg-white border border-line rounded-xl overflow-hidden hover:border-graphite-900/30 transition-colors"
                   >
                     <NewsCardImage imageUrl={item.imageUrl} title={item.title} />
@@ -358,7 +349,7 @@ export default function NewsPageClient() {
                 {rest.map((item, idx) => {
                   const ph = getPlaceholder(item.title);
                   return (
-                    <a key={item.id} href={newsUrl(item)}
+                    <a key={item.id} href={item.sourceUrl} target="_blank" rel="noopener noreferrer"
                       className={`flex gap-3 p-3.5 hover:bg-paper-50 transition-colors group ${idx < rest.length - 1 ? 'border-b border-line' : ''}`}
                     >
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"

@@ -70,31 +70,18 @@ export class NewsService {
 
         const excerpt = this.makeExcerpt(item.description);
 
-        // Генерируем slug из заголовка
-        const slug = item.title.trim()
-          .toLowerCase()
-          .replace(/[^a-zа-яё0-9\s]/gi, '')
-          .replace(/\s+/g, '-')
-          .replace(/[а-яё]/gi, (c: string) => ({
-            а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'y',
-            к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',
-            х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
-          }[c] ?? c))
-          .slice(0, 80)
-          + '-' + Date.now().toString(36);
-
         await this.prisma.newsItem.upsert({
           where: { sourceUrl: item.link },
+          // При повторном парсинге обновляем картинку если раньше не было
           update: item.enclosureUrl ? { imageUrl: item.enclosureUrl } : {},
           create: {
-            slug,
             title: item.title.trim(),
             excerpt,
             sourceUrl: item.link,
             sourceName,
             imageUrl: item.enclosureUrl ?? null,
             publishedAt: item.pubDate ? new Date(item.pubDate) : null,
-            status: 'approved',
+            status: 'approved', // автоматически публикуется — отклонять можно вручную в /admin
             sourceId,
           },
         });
@@ -238,21 +225,23 @@ export class NewsService {
 
   // Публичный API для получения новостей (используется фронтендом)
   async getLatest(limit = 20, offset = 0) {
-    const [items, total] = await Promise.all([
-      this.prisma.newsItem.findMany({
-        where: { status: 'approved' },
-        orderBy: { publishedAt: 'desc' },
-        take: limit,
-        skip: offset,
-        select: {
-          id: true, slug: true, title: true, excerpt: true,
-          sourceUrl: true, sourceName: true, isOriginal: true,
-          imageUrl: true, publishedAt: true,
-        },
-      }),
-      this.prisma.newsItem.count({ where: { status: 'approved' } }),
-    ]);
-    return { items, total, limit, offset };
+    return this.prisma.newsItem.findMany({
+      where: { status: 'approved' },
+      orderBy: { publishedAt: 'desc' },
+      take: limit,
+      skip: offset,
+      select: {
+        id: true,
+        title: true,
+        excerpt: true,
+        body: true,
+        sourceUrl: true,
+        sourceName: true,
+        isOriginal: true,
+        imageUrl: true,
+        publishedAt: true,
+      },
+    });
   }
 
   async getOne(id: string) {

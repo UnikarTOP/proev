@@ -87,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div>
                 <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Компания</div>
                 <div className="space-y-2">
-                  {[['О проекте','/about'],['Политика конфиденциальности','/privacy'],['Пользовательское соглашение','/terms']].map(([l,h]) => (
+                  {[['О проекте','/about'],['Операторам ЭЗС','/operators'],['Политика конфиденциальности','/privacy'],['Пользовательское соглашение','/terms']].map(([l,h]) => (
                     <a key={h} href={h} className="block text-sm text-muted hover:text-ink-900 transition-colors">{l}</a>
                   ))}
                 </div>
