@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, Suspense, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import CitySelect from '@/components/CitySelect';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface Category { id: string; name: string; slug: string; }
 interface Provider {
@@ -170,21 +170,28 @@ function Skeleton() {
 
 // Основной контент
 function ServicesContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   const [providers, setProviders] = useState<Provider[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(searchParams.get('q') || '');
-  const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
-  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || '');
-  const [city, setCity] = useState(searchParams.get('city') || '');
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [activeCategory, setActiveCategory] = useState('');
+  const [city, setCity] = useState('');
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [geoHidden, setGeoHidden] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const api = process.env.NEXT_PUBLIC_API_URL || '/api';
+
+  useEffect(() => {
+    // Инициализация из URL параметров
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('q')) { const q = p.get('q')!; setSearch(q); setSearchInput(q); }
+    if (p.get('category')) setActiveCategory(p.get('category')!);
+    if (p.get('city')) setCity(p.get('city')!);
+  }, []);
 
   useEffect(() => {
     const saved = document.cookie.split(';').find(c => c.trim().startsWith('proev_city='))?.split('=')[1];
