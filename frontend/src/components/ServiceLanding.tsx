@@ -591,5 +591,18 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
         </div>
       </div>
     </div>
+
+      {/* Плавающая кнопка звонка на мобильном */}
+      {provider.phone && (
+        <a href={`tel:${provider.phone}`}
+          className="fixed bottom-20 right-4 z-40 sm:hidden flex items-center gap-2 shadow-lg"
+          style={{
+            background: '#0BA5CC', color: '#fff', borderRadius: 50,
+            padding: '14px 20px', fontSize: 14, fontWeight: 700,
+            textDecoration: 'none', boxShadow: '0 4px 20px rgba(11,165,204,0.4)',
+          }}>
+          📞 Позвонить
+        </a>
+      )}
   );
 }

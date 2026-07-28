@@ -68,9 +68,8 @@ export class StationsSyncService {
       try {
         const res = await fetch(OVERPASS_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `data=${encodeURIComponent(OVERPASS_QUERY)}`,
-          signal: AbortSignal.timeout(90_000), // 90 секунд
+          signal: AbortSignal.timeout(90_000),
         });
 
         if (!res.ok) {

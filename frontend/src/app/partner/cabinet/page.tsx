@@ -15,6 +15,7 @@ interface Provider {
   workingHours?: string; yearFounded?: number;
   isPublished: boolean; isPaidPlacement: boolean;
   ratingAvg?: number; reviewCount: number; viewCount?: number; viewCountWeek?: number;
+  plan?: string; planExpiresAt?: string;
   category: { name: string; slug: string };
 }
 
@@ -101,19 +102,51 @@ function Overview({ provider, leads, reviews }: { provider: Provider; leads: Lea
       )}
 
       {/* Метрики */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { val: leads.length, lbl: 'Заявок всего', icon: 'ti-mail' },
-          { val: newLeads.length, lbl: 'Новых заявок', icon: 'ti-bell', accent: newLeads.length > 0 },
-          { val: provider.ratingAvg ? provider.ratingAvg.toFixed(1) : '—', lbl: 'Рейтинг', icon: 'ti-star' },
-        ].map(m => (
+          { val: leads.length, lbl: 'Заявок всего', icon: 'ti-mail', sub: null },
+          { val: newLeads.length, lbl: 'Новых заявок', icon: 'ti-bell', accent: newLeads.length > 0, sub: null },
+          { val: provider.viewCountWeek ?? '—', lbl: 'Просмотров за неделю', icon: 'ti-eye', sub: `Всего: ${provider.viewCount ?? 0}` },
+          { val: provider.ratingAvg ? provider.ratingAvg.toFixed(1) : '—', lbl: 'Рейтинг', icon: 'ti-star', sub: null },
+        ].map((m: any) => (
           <div key={m.lbl} className={`rounded-xl p-4 ${m.accent ? 'bg-red-50 border border-red-200' : 'bg-paper-50 border border-line'}`}>
             <i className={`ti ${m.icon} text-xl mb-2 block ${m.accent ? 'text-red-500' : 'text-muted'}`} aria-hidden="true" />
             <div className={`text-2xl font-bold ${m.accent ? 'text-red-700' : 'text-ink-900'}`}>{m.val}</div>
             <div className="text-xs text-muted mt-0.5">{m.lbl}</div>
+            {m.sub && <div className="text-[11px] text-muted mt-0.5">{m.sub}</div>}
           </div>
         ))}
       </div>
+
+      {/* Тариф */}
+      {(() => {
+        const PLANS: Record<string, { label: string; color: string; bg: string }> = {
+          free:     { label: '🆓 Базовый',          color: '#6B7686', bg: '#F9F8F5' },
+          partner:  { label: '⭐ Партнёр',           color: '#B45309', bg: '#FEF3CD' },
+          business: { label: '💼 Бизнес',            color: '#7C3AED', bg: '#F5F3FF' },
+          gold:     { label: '🥇 Золотой партнёр',   color: '#D97706', bg: '#FFFBEB' },
+        };
+        const plan = PLANS[provider.plan || 'free'];
+        const expires = provider.planExpiresAt
+          ? new Date(provider.planExpiresAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+          : null;
+        return (
+          <div className="flex items-center justify-between rounded-xl px-4 py-3 border border-line"
+            style={{ background: plan.bg }}>
+            <div>
+              <div className="text-sm font-semibold" style={{ color: plan.color }}>{plan.label}</div>
+              <div className="text-xs text-muted mt-0.5">
+                {expires ? `Действует до ${expires}` : provider.plan === 'free' ? 'Бесплатный тариф' : 'Бессрочно'}
+              </div>
+            </div>
+            {provider.plan === 'free' && (
+              <a href="/pricing" className="text-xs font-semibold text-volt-600 hover:underline">
+                Улучшить →
+              </a>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Последние заявки */}
       <div className="bg-white border border-line rounded-xl overflow-hidden">
