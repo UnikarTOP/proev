@@ -183,6 +183,7 @@ function ServicesContent() {
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [geoHidden, setGeoHidden] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const api = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -252,12 +253,11 @@ function ServicesContent() {
   const scrollStyle: React.CSSProperties = {
     overflowX: 'auto',
     WebkitOverflowScrolling: 'touch',
-    msOverflowStyle: 'none',
-    scrollbarWidth: 'none' as const,
+    scrollbarWidth: 'none' as any,
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9F8F5' }}>
+    <div style={{ minHeight: '100vh', background: '#F9F8F5' }} suppressHydrationWarning>
 
       {/* Шапка */}
       <div style={{ background: '#fff', borderBottom: '1px solid #DCE1E8' }}>

@@ -44,7 +44,7 @@ export default function CitySelect({ value, onChange, placeholder = 'Выбер�
   };
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', ...style }} className={className}>
+    <div ref={wrapRef} style={{ position: 'relative', ...style }} className={className} suppressHydrationWarning>
       {/* Поле ввода */}
       <div
         style={{
