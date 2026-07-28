@@ -303,6 +303,7 @@ model NewsSource {
 // Поле body — для редактирования/дополнения через визуальный редактор в /admin.
 model NewsItem {
   id           String      @id @default(uuid())
+  slug         String?     @unique // для SEO URL /news/[slug]
   title        String
   excerpt      String?     // 1-2 предложения — превью на сайте
   body         String?     // HTML-контент (редактируется визуально в /admin)
