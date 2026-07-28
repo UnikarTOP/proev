@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
 async function getPost(providerId: string, postSlug: string) {
-  const api = process.env.NEXT_PUBLIC_API_URL || 'http://backend:3001/api';
+  const api = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:3001/api';
   try {
     const res = await fetch(`${api}/provider-blog/public/${providerId}/${postSlug}`, { cache: 'no-store' });
     if (!res.ok) return null;
@@ -10,7 +10,7 @@ async function getPost(providerId: string, postSlug: string) {
 }
 
 async function getProvider(slug: string) {
-  const api = process.env.NEXT_PUBLIC_API_URL || 'http://backend:3001/api';
+  const api = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:3001/api';
   try {
     const res = await fetch(`${api}/service-providers/slug/${slug}`, { cache: 'no-store' });
     if (!res.ok) return null;
