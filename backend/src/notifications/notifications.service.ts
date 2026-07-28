@@ -179,8 +179,6 @@ export class NotificationsService {
     });
     this.logger.log('Недельные счётчики просмотров сброшены');
   }
-}
-
 
   // Проверяем истёкшие тарифы каждый день в 00:05
   @Cron('5 0 * * *')
@@ -209,3 +207,4 @@ export class NotificationsService {
       this.logger.log(`Истёкших тарифов: ${expired.length}`);
     }
   }
+}
