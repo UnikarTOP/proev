@@ -23,17 +23,6 @@ export class NewsController {
     );
   }
 
-  // GET /api/news/slug/:slug — ОБЯЗАТЕЛЬНО перед :id чтобы не было коллизии
-  @SkipThrottle()
-  @Get('slug/:slug')
-  async getBySlug(@Param('slug') slug: string) {
-    const item = await this.prisma.newsItem.findFirst({
-      where: { slug, status: 'approved' },
-    });
-    if (!item) throw new NotFoundException('Новость не найдена');
-    return item;
-  }
-
   // GET /api/news/:id
   @SkipThrottle()
   @Get(':id')
