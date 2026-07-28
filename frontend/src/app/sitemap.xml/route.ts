@@ -5,7 +5,7 @@ export async function GET() {
   const api = process.env.INTERNAL_API_URL || 'http://backend:3001/api';
 
   // Статические страницы
-  const staticPages = [
+  const staticPages: { url: string; changefreq: string; priority: string; lastmod?: string }[] = [
     { url: '',           changefreq: 'weekly',  priority: '1.0' },
     { url: '/charge-map',changefreq: 'daily',   priority: '0.9' },
     { url: '/services',  changefreq: 'daily',   priority: '0.9' },
