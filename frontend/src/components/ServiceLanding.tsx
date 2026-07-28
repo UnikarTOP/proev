@@ -31,6 +31,7 @@ interface Provider {
   workingHours?: string;
   yearFounded?: number;
   isPaidPlacement: boolean;
+  plan?: string;
   verified: boolean;
   ratingAvg?: number;
   reviewCount: number;
@@ -348,6 +349,18 @@ export default function ServiceLanding({ provider }: { provider: Provider }) {
                       style={{ background: 'rgba(29,158,117,.2)', color: '#5DCAA5' }}>
                       <i className="ti ti-rosette-discount-check text-sm" aria-hidden="true" />
                       Проверено proev.ru
+                    </span>
+                  )}
+                  {(provider as any).plan === 'gold' && (
+                    <span className="text-xs font-semibold flex items-center gap-1 px-2.5 py-1 rounded-full"
+                      style={{ background: 'rgba(245,158,11,.15)', color: '#D97706' }}>
+                      🥇 Золотой партнёр
+                    </span>
+                  )}
+                  {(provider as any).plan === 'business' && (
+                    <span className="text-xs font-semibold flex items-center gap-1 px-2.5 py-1 rounded-full"
+                      style={{ background: 'rgba(139,92,246,.15)', color: '#7C3AED' }}>
+                      💼 Бизнес
                     </span>
                   )}
                   {provider.isPaidPlacement && (

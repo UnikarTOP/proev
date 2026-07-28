@@ -180,3 +180,32 @@ export class NotificationsService {
     this.logger.log('Недельные счётчики просмотров сброшены');
   }
 }
+
+
+  // Проверяем истёкшие тарифы каждый день в 00:05
+  @Cron('5 0 * * *')
+  async checkExpiredPlans() {
+    const expired = await this.prisma.serviceProvider.findMany({
+      where: {
+        planExpiresAt: { lt: new Date() },
+        plan: { not: 'free' },
+      },
+      select: { id: true, name: true, plan: true },
+    });
+
+    for (const sp of expired) {
+      await this.prisma.serviceProvider.update({
+        where: { id: sp.id },
+        data: {
+          plan: 'free',
+          isPaidPlacement: false,
+          planExpiresAt: null,
+        },
+      });
+      this.logger.log(`Тариф истёк: ${sp.name} (был ${sp.plan}) → сброшен до free`);
+    }
+
+    if (expired.length > 0) {
+      this.logger.log(`Истёкших тарифов: ${expired.length}`);
+    }
+  }

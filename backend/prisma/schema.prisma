@@ -162,6 +162,8 @@ model ServiceProvider {
 
   // Модерация и монетизация
   isPaidPlacement Boolean        @default(false)
+  plan            String         @default("free") // free | partner | business | gold
+  planExpiresAt   DateTime?      // когда заканчивается тариф (null = бессрочно)
   viewCount       Int            @default(0)
   viewCountWeek   Int            @default(0)
   verified        Boolean        @default(false) // проверен командой proev.ru

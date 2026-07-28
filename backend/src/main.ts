@@ -370,34 +370,152 @@ async function mountAdmin(app: any) {
       },
 
       // ── Профили сервисов ───────────────────────────────────────────────
-      res('ServiceProvider', {
-        navigation: { name: '👥 Партнёры' },
-        listProperties: ['name', 'city', 'isPublished', 'verified', 'isPaidPlacement', 'createdAt'],
-        editProperties: ['name', 'slug', 'tagline', 'description', 'city', 'address',
-          'phone', 'email', 'telegram', 'website', 'logoUrl', 'workingHours',
-          'yearFounded', 'isPaidPlacement', 'verified', 'isPublished'],
-        filterProperties: ['isPublished', 'verified', 'isPaidPlacement', 'city'],
-        properties: {
-          name:            { label: 'Название' },
-          slug:            { label: 'URL (slug)' },
-          tagline:         { label: 'Слоган' },
-          description:     { label: 'Описание' },
-          city:            { label: 'Город' },
-          address:         { label: 'Адрес' },
-          phone:           { label: 'Телефон' },
-          email:           { label: 'Email' },
-          telegram:        { label: 'Telegram' },
-          website:         { label: 'Сайт' },
-          logoUrl:         { label: 'URL логотипа' },
-          workingHours:    { label: 'Часы работы' },
-          yearFounded:     { label: 'Год основания' },
-          isPaidPlacement: { label: '💰 Платное размещение' },
-          verified:        { label: '✅ Верифицирован' },
-          isPublished:     { label: '🌐 Опубликован' },
-          createdAt:       { label: 'Дата создания' },
+      {
+        resource: { model: getModelByName('ServiceProvider'), client: prisma },
+        options: {
+          navigation: { name: '👥 Партнёры' },
+          listProperties: ['name', 'city', 'plan', 'isPublished', 'verified', 'planExpiresAt', 'createdAt'],
+          showProperties: ['name', 'slug', 'city', 'plan', 'planExpiresAt', 'isPaidPlacement',
+            'verified', 'isPublished', 'viewCount', 'viewCountWeek', 'ratingAvg', 'reviewCount', 'createdAt'],
+          editProperties: ['name', 'slug', 'tagline', 'description', 'city', 'address',
+            'phone', 'email', 'telegram', 'website', 'logoUrl', 'workingHours',
+            'yearFounded', 'plan', 'planExpiresAt', 'isPaidPlacement', 'verified', 'isPublished'],
+          filterProperties: ['plan', 'isPublished', 'verified', 'city'],
+          properties: {
+            name:            { label: 'Название' },
+            slug:            { label: 'URL (slug)' },
+            tagline:         { label: 'Слоган' },
+            description:     { label: 'Описание' },
+            city:            { label: 'Город' },
+            address:         { label: 'Адрес' },
+            phone:           { label: 'Телефон' },
+            email:           { label: 'Email' },
+            telegram:        { label: 'Telegram' },
+            website:         { label: 'Сайт' },
+            logoUrl:         { label: 'URL логотипа' },
+            workingHours:    { label: 'Часы работы' },
+            yearFounded:     { label: 'Год основания' },
+            plan: {
+              label: '📦 Тариф',
+              availableValues: [
+                { value: 'free',     label: '🆓 Базовый (бесплатно)' },
+                { value: 'partner',  label: '⭐ Партнёр (₽2 900/мес)' },
+                { value: 'business', label: '💼 Бизнес (₽7 900/мес)' },
+                { value: 'gold',     label: '🥇 Золотой партнёр (бессрочно, бесплатно)' },
+              ],
+              description: 'Тариф определяет доступные функции партнёра',
+            },
+            planExpiresAt: {
+              label: '📅 Тариф действует до',
+              description: 'Оставьте пустым для бессрочного тарифа (Gold, Free)',
+            },
+            isPaidPlacement: {
+              label: '💰 Приоритет в каталоге',
+              description: 'Показывать выше других в списке сервисов',
+            },
+            verified: {
+              label: '✅ Верифицирован',
+              description: 'Бейдж «Проверено proev.ru» на странице партнёра',
+            },
+            isPublished:  { label: '🌐 Опубликован' },
+            viewCount:    { label: 'Просмотров всего', isVisible: { list: false, show: true, edit: false, filter: false } },
+            viewCountWeek:{ label: 'Просмотров за неделю', isVisible: { list: false, show: true, edit: false, filter: false } },
+            ratingAvg:    { label: 'Рейтинг', isVisible: { list: false, show: true, edit: false, filter: false } },
+            reviewCount:  { label: 'Отзывов', isVisible: { list: false, show: true, edit: false, filter: false } },
+            createdAt:    { label: 'Дата создания' },
+          },
+          actions: {
+            delete: { isAccessible: isAdmin },
+            // ── Назначить тариф ───────────────────────────────────────────
+            setPlan: {
+              actionType: 'record',
+              label: '📦 Назначить тариф',
+              icon: 'Star',
+              isVisible: () => true,
+              handler: async (request: any, _response: any, context: any) => {
+                const { record, currentAdmin, resource } = context;
+                const body = request.payload || {};
+                const plan = body.plan as string;
+                const months = parseInt(body.months) || 0;
+
+                if (!plan) {
+                  return {
+                    record: record.toJSON(currentAdmin),
+                    notice: { message: 'Укажите тариф в параметрах', type: 'error' },
+                  };
+                }
+
+                // Рассчитываем дату окончания
+                let planExpiresAt: Date | null = null;
+                if (months > 0) {
+                  planExpiresAt = new Date();
+                  planExpiresAt.setMonth(planExpiresAt.getMonth() + months);
+                }
+
+                // Опции тарифа
+                const planOptions: Record<string, any> = {
+                  free:     { isPaidPlacement: false, verified: false },
+                  partner:  { isPaidPlacement: true,  verified: true  },
+                  business: { isPaidPlacement: true,  verified: true  },
+                  gold:     { isPaidPlacement: true,  verified: true  },
+                };
+
+                const opts = planOptions[plan] || {};
+
+                await prisma.serviceProvider.update({
+                  where: { id: record.params.id },
+                  data: {
+                    plan,
+                    planExpiresAt,
+                    ...opts,
+                  },
+                });
+
+                const planNames: Record<string, string> = {
+                  free: 'Базовый', partner: 'Партнёр',
+                  business: 'Бизнес', gold: 'Золотой партнёр',
+                };
+
+                return {
+                  record: record.toJSON(currentAdmin),
+                  notice: {
+                    message: `✅ Тариф «${planNames[plan]}» назначен${planExpiresAt ? ` до ${planExpiresAt.toLocaleDateString('ru-RU')}` : ' (бессрочно)'}`,
+                    type: 'success',
+                  },
+                };
+              },
+              component: false,
+            },
+            // ── Быстрые кнопки тарифов ────────────────────────────────────
+            setFree: {
+              actionType: 'record',
+              label: '🆓 → Базовый',
+              isVisible: (ctx: any) => ctx.record?.params?.plan !== 'free',
+              handler: async (_req: any, _res: any, context: any) => {
+                const { record, currentAdmin } = context;
+                await prisma.serviceProvider.update({
+                  where: { id: record.params.id },
+                  data: { plan: 'free', isPaidPlacement: false, planExpiresAt: null },
+                });
+                return { record: record.toJSON(currentAdmin), notice: { message: 'Тариф сброшен до Базового', type: 'info' } };
+              },
+            },
+            setGold: {
+              actionType: 'record',
+              label: '🥇 → Золотой',
+              isVisible: (ctx: any) => ctx.record?.params?.plan !== 'gold',
+              handler: async (_req: any, _res: any, context: any) => {
+                const { record, currentAdmin } = context;
+                await prisma.serviceProvider.update({
+                  where: { id: record.params.id },
+                  data: { plan: 'gold', isPaidPlacement: true, verified: true, planExpiresAt: null },
+                });
+                return { record: record.toJSON(currentAdmin), notice: { message: '🥇 Золотой партнёр назначен бессрочно', type: 'success' } };
+              },
+            },
+          },
         },
-        actions: { delete: { isAccessible: isAdmin } },
-      }),
+      },
 
       // ── Категории сервисов ─────────────────────────────────────────────
       res('ServiceCategory', {
