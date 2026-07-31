@@ -1,3 +1,17 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'proev.ru — карта зарядных станций и сервисы для электромобилей',
+  description: 'Найдите зарядную станцию для электромобиля на карте, выберите проверенный EV-сервис и читайте новости об электромобилях в России.',
+  keywords: ['карта зарядок', 'зарядные станции Россия', 'сервис электромобиль', 'EV', 'электрокар'],
+  openGraph: {
+    title: 'proev.ru — карта зарядок и сервисы для электромобилей',
+    description: 'Карта зарядных станций, каталог EV-сервисов, новости об электромобилях в России.',
+    url: 'https://proev.ru',
+    images: [{ url: '/icons/icon-512.png', width: 512, height: 512 }],
+  },
+};
+
 import { RouteStrip } from '@/components/RouteStrip';
 import HomeNews from '@/components/HomeNews';
 import PartnerPostsFeed from '@/components/PartnerPostsFeed';
@@ -45,9 +59,62 @@ export default async function HomePage() {
 
       {/* FEATURES */}
       <div className="max-w-[1120px] mx-auto px-4 md:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
-        <FeatureCard eyebrow="01 · Карта" title="Карта зарядок" text="Статус станций обновляют сами водители — работает, сломана, есть очередь." href="/charge-map" />
+        <FeatureCard eyebrow="01 · Карта" title="Карта зарядок" text="Информация о доступности и статусе станций обновляется онлайн — всегда актуальные данные в реальном времени." href="/charge-map" />
         <FeatureCard eyebrow="02 · Сервисы" title="Сервисы для EV" text="СТО, установка домашних зарядных станций, страхование — с проверенными партнёрами." href="/services" />
         <FeatureCard eyebrow="03 · Новости" title="Новости про EV" text="Актуальные новости об электромобилях, зарядной инфраструктуре и рынке России." href="/news" />
+      </div>
+
+      {/* КАЛЬКУЛЯТОР МАРШРУТА — заметный блок */}
+      <div className="max-w-[1120px] mx-auto px-4 md:px-6 mt-8 md:mt-10">
+        <a href="/route-planner" className="block group">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B1220] via-[#0F1C35] to-[#0B2240] p-6 md:p-8">
+            {/* Декор */}
+            <div className="absolute right-0 top-0 w-64 h-64 rounded-full opacity-10"
+              style={{ background: 'radial-gradient(circle, #3DDBFF 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+            <div className="absolute right-16 bottom-0 w-40 h-40 rounded-full opacity-5"
+              style={{ background: 'radial-gradient(circle, #3DDBFF 0%, transparent 70%)', transform: 'translate(0%, 40%)' }} />
+
+            <div className="relative flex flex-col md:flex-row md:items-center gap-6 md:gap-10">
+              {/* Иконка и текст */}
+              <div className="flex-1">
+                <div className="inline-flex items-center gap-2 text-xs font-semibold text-volt-400 bg-volt-400/10 px-3 py-1.5 rounded-full mb-4">
+                  🧭 Умный планировщик маршрута
+                </div>
+                <h2 className="text-[22px] md:text-[28px] font-bold text-white leading-tight mb-3">
+                  Сколько зарядок нужно<br className="hidden md:block" /> до{' '}
+                  <span className="text-volt-400">Санкт-Петербурга</span>?
+                </h2>
+                <p className="text-[14px] text-[#8A96AC] leading-relaxed max-w-md">
+                  Рассчитайте маршрут с учётом вашего электромобиля, скорости, сезона и цен на зарядку. 
+                  Откройте в Яндекс Картах или 2ГИС одной кнопкой.
+                </p>
+              </div>
+
+              {/* Превью характеристик */}
+              <div className="flex md:flex-col gap-3 flex-wrap">
+                {[
+                  { icon: '⚡', text: 'Реальный расход по скорости' },
+                  { icon: '❄️', text: 'Сезонные коэффициенты' },
+                  { icon: '💰', text: 'Сравнение с бензином' },
+                  { icon: '🗺️', text: 'Маршрут в навигаторе' },
+                ].map(f => (
+                  <div key={f.text} className="flex items-center gap-2 text-xs text-[#8A96AC]">
+                    <span>{f.icon}</span>
+                    <span>{f.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <div className="flex-shrink-0">
+                <div className="inline-flex items-center gap-2 bg-volt-400 text-ink-900 font-bold text-[15px] px-7 py-4 rounded-xl group-hover:bg-[#5AEAFF] transition-colors">
+                  Рассчитать маршрут
+                  <span className="text-lg">→</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </a>
       </div>
 
       {/* STATION PREVIEW */}

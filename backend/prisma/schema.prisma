@@ -58,6 +58,15 @@ model User {
   avatarUrl    String?
   role         UserRole @default(user)
   passwordHash String?
+  // Профиль
+  city         String?
+  bio          String?
+  // Данные об электромобиле
+  carBrand      String?   // Tesla, BYD, Zeekr, Li Auto...
+  carModel      String?   // Model 3, Han, 001...
+  carYear       Int?
+  carRange      Int?      // реальный запас хода в км
+  connectorType String?   // Type2, CCS2, CHAdeMO, GBT
   // Сброс пароля по email
   resetToken       String?   @unique
   resetTokenExpiry DateTime?
@@ -70,6 +79,7 @@ model User {
   providerReviews  ProviderReview[]
   managedProviders ServiceProvider[]
   partnerApplications PartnerApplication[]
+  trips            Trip[]
 }
 
 model ChargingStation {
@@ -97,6 +107,7 @@ model ChargingStation {
   addedBy   User?   @relation("AddedStations", fields: [addedById], references: [id])
 
   reviews   StationReview[]
+  trips     Trip[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -357,4 +368,46 @@ model Page {
   isPublished Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Дневник поездок пользователя
+model Trip {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stationId   String?
+  station     ChargingStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  stationName String?  // если станции нет в БД
+  city        String?
+  chargedKwh  Float?   // заряжено кВт·ч
+  durationMin Int?     // время зарядки в минутах
+  speedKw     Float?   // реальная скорость зарядки кВт
+  cost        Float?   // стоимость в рублях
+  rating      Int?     // оценка станции 1-5
+  comment     String?
+  visitedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+// База электромобилей — управляется через AdminJS
+model EVModel {
+  id            String   @id @default(uuid())
+  brand         String
+  model         String
+  year          Int
+  range         Int      // запас хода км WLTP/NEDC
+  consumption   Float    // кВт·ч / 100 км паспортный
+  battery       Float    // кВт·ч ёмкость батареи
+  connector     String   // GBT, CCS2, CHAdeMO, Type2
+  maxChargeDC   Int      // макс. DC кВт
+  maxChargeAC   Int?     // макс. AC кВт
+  origin        String?  // китайский оригинал
+  isHybrid      Boolean  @default(false)
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([brand])
+  @@index([connector])
 }

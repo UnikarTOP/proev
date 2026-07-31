@@ -56,7 +56,7 @@ function buildMapStyle(provider: string, yandexApiKey: string | null) {
 
   return {
     version: 8 as const,
-    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+
     sources: {
       tiles: {
         type: 'raster' as const,
@@ -85,12 +85,13 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
   const [filterSpeed, setFilterSpeed]       = useState<string>('all');
 
   const allConnectors = Array.from(
-    new Set(stations.flatMap((s) => s.connectorTypes))
+    new Set(stations.flatMap((s) => s.connectorTypes || s.connectors?.map((c: any) => c.type || c) || []))
   ).sort();
 
   const filtered = stations.filter((s) => {
     if (filterStatus !== 'all' && s.status !== filterStatus) return false;
-    if (filterConnector !== 'all' && !s.connectorTypes.includes(filterConnector)) return false;
+    const types = s.connectorTypes || s.connectors?.map((c: any) => c.type || c) || [];
+    if (filterConnector !== 'all' && !types.includes(filterConnector)) return false;
     if (filterSpeed !== 'all' && s.chargingSpeed !== filterSpeed) return false;
     return true;
   });
@@ -106,7 +107,7 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
         status:         s.status,
         color:          STATUS_COLOR[s.status] ?? STATUS_COLOR.unknown,
         chargingSpeed:  s.chargingSpeed,
-        connectorTypes: s.connectorTypes.join(', '),
+        connectorTypes: (s.connectorTypes || s.connectors?.map((c: any) => c.type || c) || []).join(', '),
         address:        s.address ?? '',
         city:           s.city ?? '',
         networkOperator: s.networkOperator ?? '',
@@ -154,17 +155,17 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
         },
       });
 
+      // Число на кластере — второй круг меньшего размера (без шрифтов)
       map.addLayer({
         id: 'cluster-count',
-        type: 'symbol',
+        type: 'circle',
         source: 'stations',
         filter: ['has', 'point_count'],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-size': 13,
-          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        paint: {
+          'circle-color': '#fff',
+          'circle-radius': 10,
+          'circle-opacity': 0.9,
         },
-        paint: { 'text-color': '#fff' },
       });
 
       map.addLayer({
@@ -276,7 +277,7 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
         <div
           ref={containerRef}
           className="flex-1 rounded-xl overflow-hidden border border-line map-container"
-          style={{ height: 560 }}
+          style={{ height: 'clamp(400px, 60vh, 600px)' }}
         />
 
         {selected && (
@@ -284,7 +285,7 @@ export default function Map({ stations, mapProvider = 'osm', yandexApiKey = null
             <StationCard
               station={{
                 ...selected,
-                connectors: selected.connectorTypes || [],
+                connectors: selected.connectorTypes || selected.connectors?.map((c: any) => c.type || c) || [],
                 status: (selected.status === 'working' ? 'available' : selected.status) as any,
               }}
               onClose={() => setSelected(null)}

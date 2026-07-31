@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -28,6 +29,11 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   });
+  // Security headers
+  app.use(helmet({
+    contentSecurityPolicy: false, // AdminJS требует inline scripts
+    crossOriginEmbedderPolicy: false,
+  }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useStaticAssets(UPLOADS_DIR, { prefix: '/uploads' });
   await mountAdmin(app);
@@ -379,6 +385,44 @@ async function mountAdmin(app: any) {
         },
       },
 
+
+      // ── База электромобилей ────────────────────────────────────────────────
+      {
+        resource: { model: getModelByName('EVModel'), client: prisma },
+        options: {
+          navigation: { name: '🚗 База авто' },
+          listProperties: ['brand', 'model', 'year', 'range', 'consumption', 'battery', 'connector', 'maxChargeDC', 'isActive'],
+          showProperties: ['brand', 'model', 'year', 'range', 'consumption', 'battery', 'connector', 'maxChargeDC', 'maxChargeAC', 'origin', 'isHybrid', 'notes', 'isActive', 'createdAt', 'updatedAt'],
+          editProperties: ['brand', 'model', 'year', 'range', 'consumption', 'battery', 'connector', 'maxChargeDC', 'maxChargeAC', 'origin', 'isHybrid', 'isActive', 'notes'],
+          filterProperties: ['brand', 'connector', 'isHybrid', 'isActive', 'year'],
+          sort: { direction: 'asc', sortBy: 'brand' },
+          properties: {
+            brand: { label: 'Марка', isRequired: true },
+            model: { label: 'Модель', isRequired: true },
+            year: { label: 'Год', isRequired: true },
+            range: { label: '🔋 Запас хода, км', description: 'WLTP или NEDC' },
+            consumption: { label: '⚡ Расход кВт·ч/100км', description: 'Паспортный' },
+            battery: { label: '🔌 Батарея, кВт·ч' },
+            connector: {
+              label: 'Тип разъёма',
+              availableValues: [
+                { value: 'GBT', label: 'GB/T (китайский)' },
+                { value: 'CCS2', label: 'CCS2 / Combo 2' },
+                { value: 'CHAdeMO', label: 'CHAdeMO' },
+                { value: 'Type2', label: 'Type 2 (AC)' },
+                { value: 'Type1', label: 'Type 1 (AC)' },
+              ],
+            },
+            maxChargeDC: { label: 'Макс. DC зарядка, кВт' },
+            maxChargeAC: { label: 'Макс. AC зарядка, кВт' },
+            origin: { label: 'Китайский оригинал', description: 'Для Evolute и аналогов' },
+            isHybrid: { label: 'PHEV/EREV (гибрид)', description: 'Электро режим ограничен' },
+            isActive: { label: '✅ Активна в базе', description: 'Отображается в планировщике' },
+            notes: { label: 'Заметки', type: 'textarea' },
+          },
+          actions: { delete: { isAccessible: isAdmin } },
+        },
+      },
       // ── Профили сервисов ───────────────────────────────────────────────
       {
         resource: { model: getModelByName('ServiceProvider'), client: prisma },

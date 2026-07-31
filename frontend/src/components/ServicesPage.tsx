@@ -169,7 +169,7 @@ function Skeleton() {
 }
 
 // Основной контент
-function ServicesContent() {
+function ServicesContent({ initialCity }: { initialCity?: string }) {
   const router = useRouter();
 
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -178,7 +178,7 @@ function ServicesContent() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
-  const [city, setCity] = useState('');
+  const [city, setCity] = useState(initialCity || '');
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [geoHidden, setGeoHidden] = useState(false);
@@ -518,6 +518,6 @@ function ServicesContent() {
   );
 }
 
-export default function ServicesPage() {
-  return <ServicesContent />;
+export default function ServicesPage({ initialCity }: { initialCity?: string }) {
+  return <ServicesContent initialCity={initialCity} />;
 }

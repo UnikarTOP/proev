@@ -1,43 +1,27 @@
+import { sanitizeHtml } from '@/lib/sanitize';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
-interface NewsItem {
-  id: string; slug?: string; title: string; excerpt?: string;
-  body?: string; sourceUrl: string; sourceName: string;
-  imageUrl?: string; publishedAt?: string; isOriginal: boolean;
-}
-
-async function getNews(slug: string): Promise<NewsItem | null> {
-  const api = process.env.INTERNAL_API_URL || 'http://backend:3001/api';
+async function getNews(id: string) {
+  const api = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:3001/api';
   try {
-    // Пробуем сначала по slug, потом по id
-    const res = await fetch(`${api}/news/slug/${slug}`, { next: { revalidate: 3600 } });
-    if (res.ok) return res.json();
-    const res2 = await fetch(`${api}/news/${slug}`, { next: { revalidate: 3600 } });
-    if (res2.ok) return res2.json();
-    return null;
+    const res = await fetch(`${api}/news/${id}`, { next: { revalidate: 600 } });
+    if (!res.ok) return null;
+    return res.json();
   } catch { return null; }
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const item = await getNews(params.slug);
-  if (!item) return { title: 'Новость не найдена — proev.ru' };
+  if (!item) return { title: 'Новость не найдена' };
   return {
     title: `${item.title} — proev.ru`,
-    description: item.excerpt || item.title,
-    openGraph: {
-      title: item.title,
-      description: item.excerpt || item.title,
-      images: item.imageUrl ? [item.imageUrl] : [],
-    },
+    description: item.summary || item.title,
+    openGraph: { title: item.title, description: item.summary, url: `https://proev.ru/news/${params.slug}` },
   };
 }
 
-function timeAgo(d?: string) {
-  if (!d) return '';
-  const diff = (Date.now() - new Date(d).getTime()) / 60000;
-  if (diff < 60) return `${Math.round(diff)} мин назад`;
-  if (diff < 1440) return `${Math.round(diff / 60)} ч назад`;
+function formatDate(d: string) {
   return new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
@@ -45,80 +29,55 @@ export default async function NewsItemPage({ params }: { params: { slug: string 
   const item = await getNews(params.slug);
   if (!item) notFound();
 
-  const domain = (() => { try { return new URL(item.sourceUrl).hostname.replace('www.', ''); } catch { return ''; } })();
-
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 60px' }}>
-
-      {/* Хлебные крошки */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7686', marginBottom: 24 }}>
-        <a href="/news" style={{ color: '#6B7686', textDecoration: 'none' }}>Новости</a>
-        <span>›</span>
-        <span style={{ color: '#B4B2A9' }} className="truncate">{item.sourceName}</span>
+    <div className="max-w-[740px] mx-auto px-4 md:px-6 py-8 md:py-12">
+      <div className="mb-6">
+        <a href="/news" className="text-xs text-muted hover:text-ink-900 flex items-center gap-1">
+          ← Все новости
+        </a>
       </div>
 
-      {/* Заголовок */}
-      <h1 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 700, color: '#10192B', lineHeight: 1.3, marginBottom: 16 }}>
+      {item.category && (
+        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-volt-600 bg-volt-600/10 px-3 py-1.5 rounded-full mb-4">
+          {item.category}
+        </div>
+      )}
+
+      <h1 className="text-[22px] md:text-[30px] font-bold text-ink-900 leading-tight mb-4">
         {item.title}
       </h1>
 
-      {/* Мета */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        {domain && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=16`} alt="" width={14} height={14}
-              style={{ borderRadius: 2 }} />
-            <span style={{ fontSize: 13, color: '#6B7686' }}>{item.sourceName}</span>
+      <div className="flex items-center gap-4 text-xs text-muted mb-8 pb-6 border-b border-line">
+        {item.sourceName && (
+          <div className="flex items-center gap-1.5">
+            {item.faviconUrl && (
+              <img src={item.faviconUrl} alt="" width={14} height={14} className="rounded-sm" />
+            )}
+            <span>{item.sourceName}</span>
           </div>
         )}
-        {item.publishedAt && (
-          <span style={{ fontSize: 13, color: '#B4B2A9' }}>{timeAgo(item.publishedAt)}</span>
-        )}
+        {item.publishedAt && <span>{formatDate(item.publishedAt)}</span>}
+        {item.readTimeMin && <span>~{item.readTimeMin} мин чтения</span>}
       </div>
 
-      {/* Картинка */}
-      {item.imageUrl && (
-        <div style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 28, maxHeight: 360 }}>
-          <img src={item.imageUrl} alt={item.title}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        </div>
-      )}
-
-      {/* Анонс */}
-      {item.excerpt && (
-        <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.7, marginBottom: 24,
-          padding: '16px 20px', background: '#F9F8F5', borderRadius: 12,
-          borderLeft: '3px solid #0BA5CC' }}>
-          {item.excerpt}
+      {item.summary && (
+        <p className="text-base text-muted leading-relaxed mb-6 font-medium">
+          {item.summary}
         </p>
       )}
 
-      {/* Полный текст если есть (оригинальные статьи) */}
-      {item.isOriginal && item.body ? (
-        <div style={{ fontSize: 16, color: '#374151', lineHeight: 1.8 }}
-          dangerouslySetInnerHTML={{ __html: item.body }} />
-      ) : (
-        /* Для агрегированных - кнопка на источник */
-        <div style={{ background: '#F9F8F5', borderRadius: 16, padding: 28, textAlign: 'center', marginTop: 8 }}>
-          <p style={{ fontSize: 15, color: '#6B7686', marginBottom: 20, lineHeight: 1.6 }}>
-            Это агрегированная новость. Полный текст доступен на сайте источника.
-          </p>
-          <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: '#0B1220', color: '#fff', textDecoration: 'none',
-              padding: '12px 28px', borderRadius: 12, fontSize: 15, fontWeight: 600 }}>
-            Читать на {domain || item.sourceName}
-            <span style={{ fontSize: 12 }}>↗</span>
+      <div className="prose prose-sm max-w-none text-ink-900 leading-relaxed mb-8"
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.content || item.summary || '') }} />
+
+      {item.url && (
+        <div className="border border-line rounded-2xl p-5 bg-paper-50">
+          <p className="text-sm text-muted mb-3">Источник материала:</p>
+          <a href={item.url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-medium text-volt-600 hover:underline no-underline">
+            {item.sourceName || 'Читать оригинал'} →
           </a>
         </div>
       )}
-
-      {/* Похожие новости */}
-      <div style={{ marginTop: 48, paddingTop: 32, borderTop: '1px solid #DCE1E8' }}>
-        <a href="/news" style={{ color: '#0BA5CC', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
-          ← Все новости об электромобилях
-        </a>
-      </div>
     </div>
   );
 }

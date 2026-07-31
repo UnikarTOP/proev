@@ -1,0 +1,24 @@
+[0;1;32m●[0m ssh.service - OpenBSD Secure Shell server
+     Loaded: loaded (]8;;file://proev/usr/lib/systemd/system/ssh.service/usr/lib/systemd/system/ssh.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Wed 2026-07-29 05:41:54 UTC; 23h ago
+TriggeredBy: [0;1;32m●[0m ssh.socket
+       Docs: ]8;;man:sshd(8)man:sshd(8)]8;;
+             ]8;;man:sshd_config(5)man:sshd_config(5)]8;;
+    Process: 24633 ExecStartPre=/usr/sbin/sshd -t (code=exited, status=0/SUCCESS)
+   Main PID: 24635 (sshd)
+      Tasks: 1 (limit: 9491)
+     Memory: 2.6M (peak: 58.8M)
+        CPU: 21.246s
+     CGroup: /system.slice/ssh.service
+             └─[0;38;5;245m24635 "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups"[0m
+
+Jul 30 04:38:46 proev sshd[385974]: Failed password for root from 45.148.10.157 port 35680 ssh2
+Jul 30 04:39:56 proev sshd[386314]: [0;1;39m[0;1;31m[0;1;39mpam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=5.17.19.151  user=root[0m
+Jul 30 04:39:58 proev sshd[386314]: Failed password for root from 5.17.19.151 port 55066 ssh2
+Jul 30 04:46:08 proev sshd[387844]: Connection reset by 198.235.24.47 port 60474 [preauth]
+Jul 30 04:46:09 proev sshd[387866]: [0;1;39m[0;1;31m[0;1;39mpam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=45.148.10.151  user=root[0m
+Jul 30 04:46:12 proev sshd[387866]: Failed password for root from 45.148.10.151 port 49890 ssh2
+Jul 30 04:46:14 proev sshd[387866]: Failed password for root from 45.148.10.151 port 49890 ssh2
+Jul 30 04:46:18 proev sshd[387866]: Failed password for root from 45.148.10.151 port 49890 ssh2
+Jul 30 04:46:21 proev sshd[387866]: Failed password for root from 45.148.10.151 port 49890 ssh2
+Jul 30 04:46:23 proev sshd[387866]: Failed password for root from 45.148.10.151 port 49890 ssh2

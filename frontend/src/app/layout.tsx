@@ -3,6 +3,12 @@ import Script from 'next/script';
 import './globals.css';
 import MobileNav from '@/components/MobileNav';
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#0B1220',
+};
+
 export const metadata: Metadata = {
   title: {
     default: 'proev.ru — карта зарядок и сервисы для электромобилей в России',
@@ -36,7 +42,6 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'proev.ru',
   },
-  themeColor: '#0B1220',
 };
 
 const METRIKA_ID = process.env.NEXT_PUBLIC_METRIKA_ID;
@@ -62,29 +67,70 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}</Script>
         )}
         <header className="border-b border-line bg-white/95 backdrop-blur-sm sticky top-0 z-50">
-          <nav className="max-w-[1120px] mx-auto flex items-center justify-between px-4 md:px-6 py-4">
-            <a href="/" className="font-bold text-xl tracking-tight text-ink-900 shrink-0">
-              proev<span className="text-volt-600">.ru</span>
-            </a>
+          <div className="max-w-[1120px] mx-auto px-4 md:px-6">
 
-            {/* Десктопное меню */}
-            <div className="hidden md:flex gap-6 lg:gap-8 text-sm font-medium text-ink-700">
-              <a href="/charge-map" className="hover:text-volt-600 transition-colors">Карта зарядок</a>
-              <a href="/services" className="hover:text-volt-600 transition-colors">Сервисы</a>
-              <a href="/news" className="hover:text-volt-600 transition-colors">Новости</a>
-              <a href="/about" className="hover:text-volt-600 transition-colors">О проекте</a>
-              <a href="/pricing" className="hover:text-volt-600 transition-colors">Тарифы</a>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <a href="/partner" className="bg-ink-900 text-white text-sm font-semibold px-4 py-2.5 rounded-[10px] whitespace-nowrap hidden sm:block">
-                Разместить сервис
+            {/* Верхняя строка: логотип + CTA */}
+            <div className="flex items-center justify-between py-3 border-b border-line/60">
+              <a href="/" className="font-bold text-xl tracking-tight text-ink-900 shrink-0">
+                proev<span className="text-volt-600">.ru</span>
               </a>
+              <div className="flex items-center gap-3">
+                <a href="/login" id="header-login-btn"
+                  className="text-sm font-medium text-muted hover:text-ink-900 transition-colors hidden sm:block whitespace-nowrap">
+                  Войти
+                </a>
+                <a href="/partner"
+                  className="bg-ink-900 text-white text-sm font-semibold px-4 py-2 rounded-[10px] whitespace-nowrap hidden sm:block hover:bg-ink-700 transition-colors">
+                  Для бизнеса
+                </a>
+              </div>
             </div>
-          </nav>
+
+            {/* Нижняя строка: навигация сегментированная */}
+            <nav className="hidden md:flex items-center gap-0.5 py-2">
+              {/* Группа 1 — инфраструктура */}
+              <a href="/charge-map" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Карта зарядок</a>
+              <a href="/services" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Сервисы</a>
+              <a href="/news" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Новости</a>
+
+              {/* Разделитель */}
+              <span className="w-px h-4 bg-line mx-2 flex-shrink-0" />
+
+              {/* Группа 2 — инструменты */}
+              <a href="/ev-catalog" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">
+                База EV
+                <span className="ml-1 text-[9px] font-semibold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full align-middle">NEW</span>
+              </a>
+              <a href="/route-planner" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Маршрут</a>
+              <a href="/community" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Сообщество</a>
+
+              {/* Разделитель */}
+              <span className="w-px h-4 bg-line mx-2 flex-shrink-0" />
+
+              {/* Группа 3 — бизнес */}
+              <a href="/pricing" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Тарифы</a>
+              <a href="/about" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">О проекте</a>
+            </nav>
+
+          </div>
+
+          <script dangerouslySetInnerHTML={{ __html: `
+            (function(){
+              var t = localStorage.getItem('user_token');
+              var u = localStorage.getItem('user');
+              var btn = document.getElementById('header-login-btn');
+              if(t && u && btn) {
+                try {
+                  var name = JSON.parse(u).name || 'Профиль';
+                  btn.href = '/profile';
+                  btn.textContent = name.split(' ')[0];
+                } catch(e){}
+              }
+            })();
+          `}} />
         </header>
 
-        <main>{children}</main>
+        <main className="pb-20 md:pb-0">{children}</main>
 
         <MobileNav />
 
@@ -118,7 +164,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div>
                 <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Компания</div>
                 <div className="space-y-2">
-                  {[['О проекте','/about'],['Операторам ЭЗС','/operators'],['Политика конфиденциальности','/privacy'],['Пользовательское соглашение','/terms']].map(([l,h]) => (
+                  {[['О проекте','/about'],['Водителям','/for-drivers'],['База EV','/ev-catalog'],['Операторам ЭЗС','/operators'],['Сообщество','/community'],['Планировщик маршрута','/route-planner'],['Политика конфиденциальности','/privacy'],['Пользовательское соглашение','/terms']].map(([l,h]) => (
                     <a key={h} href={h} className="block text-sm text-muted hover:text-ink-900 transition-colors">{l}</a>
                   ))}
                 </div>

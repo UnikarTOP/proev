@@ -106,7 +106,7 @@ export default function PartnerPage() {
       {/* Демо-ссылка */}
       <div className="text-center mb-8">
         <p className="text-sm text-muted mb-3">Посмотрите как выглядит страница партнёра:</p>
-        <a href="/services/ev-service-demo" target="_blank"
+        <a href="/services" target="_blank"
           className="text-volt-600 text-sm underline underline-offset-2 hover:opacity-80">
           Пример страницы СТО →
         </a>

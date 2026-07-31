@@ -1,4 +1,5 @@
 'use client';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 import { useState, useEffect } from 'react';
 
@@ -92,7 +93,7 @@ export default function ProviderBlogSection({ providerId }: { providerId: string
                 )}
                 <div
                   className="prose"
-                  dangerouslySetInnerHTML={{ __html: post.content || '' }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content || '') }}
                 />
                 <p className="text-xs text-muted mt-4 pt-3 border-t border-line">
                   {new Date(post.publishedAt || post.createdAt).toLocaleDateString('ru-RU', {

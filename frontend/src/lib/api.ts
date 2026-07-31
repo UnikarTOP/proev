@@ -24,7 +24,8 @@ export interface ChargingStation {
   longitude: number;
   address?: string;
   city?: string;
-  connectorTypes: string[];
+  connectorTypes?: string[];
+  connectors: any[];
   chargingSpeed: 'slow' | 'fast' | 'ultra_fast';
   powerKw?: number;
   status: 'working' | 'broken' | 'unknown';

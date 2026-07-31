@@ -19,7 +19,19 @@ export default function ChargeMapPage() {
           Статусы обновляют сами водители. Нашли неработающую зарядку — отметьте на карточке станции.
         </p>
       </div>
-      <MapWrapper />
+      <div style={{ position: 'relative' }}>
+        <MapWrapper />
+        <div style={{
+          position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(11,18,32,0.85)', backdropFilter: 'blur(8px)',
+          color: '#3DDBFF', fontSize: 13, fontWeight: 500,
+          padding: '8px 20px', borderRadius: 20,
+          border: '1px solid rgba(11,165,204,0.3)',
+          zIndex: 10, whiteSpace: 'nowrap', pointerEvents: 'none',
+        }}>
+          ⚡ Карта в демо-режиме — данные обновляются
+        </div>
+      </div>
     </div>
   );
 }

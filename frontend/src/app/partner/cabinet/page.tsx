@@ -342,7 +342,7 @@ function PageEditor({ provider, evModels, onSave, saving, saved, token }: {
 
       {/* Фото */}
       <Card title="Фотографии сервиса" icon="ti-photo">
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
           {(form.photos || []).map((url, i) => (
             <div key={i} className="relative group aspect-video rounded-lg overflow-hidden border border-line bg-paper-50">
               {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -103,7 +103,7 @@ export default function AboutPage() {
             { date: 'Апрель 2026', title: 'Старт разработки', done: true },
             { date: 'Июль 2026', title: 'Запуск MVP — карта, каталог, новости, кабинет партнёра с CRM и блогом', done: true },
             { date: 'Q3 2026', title: 'Рост партнёрской сети, первые платящие клиенты', done: false },
-            { date: 'Q4 2026', title: 'Монетизация через ЮKassa, расширенная аналитика', done: false },
+            { date: 'Q4 2026', title: 'Монетизация, расширенная аналитика и верификация партнёров', done: false },
             { date: '2027', title: 'Мобильное приложение, OCPI-интеграции с операторами, Telegram-бот', done: false },
           ].map(r => (
             <div key={r.date} className="flex gap-4 items-start">

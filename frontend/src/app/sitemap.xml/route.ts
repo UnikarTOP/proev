@@ -53,7 +53,19 @@ export async function GET() {
     }
   } catch {}
 
-  const allUrls = [...staticPages, ...providerUrls, ...newsUrls];
+
+  // SEO страницы по городам
+  const cityUrls: { url: string; changefreq: string; priority: string; lastmod?: string }[] = [
+    'moskva','spb','novosibirsk','ekaterinburg','kazan','krasnodar',
+    'nizhniy-novgorod','voronezh','tyumen','vladivostok','sochi',
+    'samara','ufa','chelyabinsk','krasnoyarsk','perm','omsk',
+  ].map(city => ({
+    url: `/services/city/${city}`,
+    changefreq: 'weekly',
+    priority: '0.7',
+  }));
+
+  const allUrls = [...staticPages, ...cityUrls, ...providerUrls, ...newsUrls];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
