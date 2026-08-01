@@ -78,6 +78,9 @@ export default function RoutePlannerPage() {
   const [gasCar, setGasCar] = useState(10);
 
   const [result, setResult] = useState<CalcResult | null>(null);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'route'|'economy'|'tips'>('route');
@@ -96,6 +99,37 @@ export default function RoutePlannerPage() {
   const liveCostEv = result ? Math.round(result.energyNeeded * electricityPrice) : 0;
   const liveCostGas = result ? Math.round(result.distance * gasCar / 100 * gasPrice) : 0;
   const liveSaving = liveCostGas - liveCostEv;
+
+
+  // Загрузка сохранённого маршрута по коду из URL (?r=XXXXXX)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('r');
+    if (!code) return;
+    fetch(`${api}/routes/${code}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(route => {
+        if (!route) return;
+        setFrom(route.fromName);
+        setTo(route.toName);
+        setFromPoint({ lat: route.fromLat, lon: route.fromLon, name: route.fromName });
+        setToPoint({ lat: route.toLat, lon: route.toLon, name: route.toName });
+        setCustomDistance(route.distance);
+        setUseCustomDistance(true);
+        if (route.speed) setSpeed(route.speed);
+        if (route.season) setSeason(route.season);
+        if (route.chargeLevel) setChargeLevel(route.chargeLevel);
+        if (route.carBrand) setBrand(route.carBrand);
+        setMapLoaded(true);
+        const url = `https://proev.ru/route-planner?r=${code}`;
+        setShareUrl(url);
+        // Автоматически запускаем расчёт после загрузки
+        setTimeout(() => {
+          document.getElementById('calc-btn')?.click();
+        }, 300);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`${api}/ev-models`)
@@ -148,6 +182,43 @@ export default function RoutePlannerPage() {
       setUseCustomDistance(true);
     }
     setMapLoaded(true);
+  };
+
+
+  const saveRoute = async () => {
+    if (!result || !fromPoint || !toPoint) return;
+    setShareLoading(true);
+    try {
+      const res = await fetch(`${api}/routes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromName: from, fromLat: fromPoint.lat, fromLon: fromPoint.lon,
+          toName: to, toLat: toPoint.lat, toLon: toPoint.lon,
+          distance: result.distance,
+          carBrand: selectedModel?.brand || brand,
+          carModel: selectedModel?.model || '',
+          consumption: result.realConsumption,
+          battery: selectedModel?.battery || Number(customBattery) || null,
+          speed, season, chargeLevel,
+          stops: result.stops.length,
+          totalTimeMin: result.totalTimeMin,
+          energyNeeded: result.energyNeeded,
+        }),
+      });
+      const data = await res.json();
+      setShareUrl(data.url);
+    } catch {
+      setShareUrl(`${window.location.origin}/route-planner?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    }
+    setShareLoading(false);
+  };
+
+  const copyShareUrl = async () => {
+    if (!shareUrl) await saveRoute();
+    await navigator.clipboard.writeText(shareUrl);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2500);
   };
 
   const calculate = () => {
@@ -396,7 +467,7 @@ export default function RoutePlannerPage() {
           {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>}
 
           <button onClick={calculate} disabled={loading || (!selectedModel && !useCustom)}
-            className="w-full py-4 bg-ink-900 text-white rounded-xl text-base font-bold hover:bg-ink-700 transition-colors disabled:opacity-40">
+            id="calc-btn" className="w-full py-4 bg-ink-900 text-white rounded-xl text-base font-bold hover:bg-ink-700 transition-colors disabled:opacity-40">
             {loading ? '⏳ Рассчитываем...' : '🧭 Рассчитать маршрут'}
           </button>
         </div>
@@ -482,6 +553,50 @@ export default function RoutePlannerPage() {
                   <a href="/charge-map" className="flex items-center justify-center gap-2 w-full py-3 border border-volt-600/30 text-volt-600 rounded-xl text-sm font-medium hover:bg-volt-600/5 transition-colors no-underline">
                     🗺️ Найти зарядки на маршруте →
                   </a>
+
+                  {/* Поделиться маршрутом */}
+                  {result && fromPoint && toPoint && (
+                    <div className="bg-white border border-line rounded-xl p-4">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Поделиться маршрутом</p>
+
+                      {!shareUrl ? (
+                        <button onClick={saveRoute} disabled={shareLoading}
+                          className="w-full py-2.5 border border-line rounded-xl text-sm font-medium text-ink-900 hover:bg-paper-50 transition-colors disabled:opacity-50">
+                          {shareLoading ? '⏳ Сохраняем...' : '🔗 Получить ссылку на маршрут'}
+                        </button>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex gap-2">
+                            <input readOnly value={shareUrl}
+                              className="flex-1 text-xs border border-line rounded-lg px-3 py-2 bg-paper-50 text-muted font-mono focus:outline-none" />
+                            <button onClick={copyShareUrl}
+                              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${shareCopied ? 'bg-green-100 text-green-700' : 'bg-ink-900 text-white hover:bg-ink-700'}`}>
+                              {shareCopied ? '✅ Скопировано' : 'Копировать'}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <a href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Маршрут ${from} → ${to} на электромобиле: ${result.distance} км, ${result.stops.length === 0 ? 'без зарядок' : result.stops.length + ' зарядки'}`)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium no-underline transition-colors"
+                              style={{ background: '#E1F5EE', color: '#0F6E56' }}>
+                              ✈️ Telegram
+                            </a>
+                            <a href={`https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`Маршрут ${from} → ${to} на EV`)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium no-underline transition-colors"
+                              style={{ background: '#E6F1FB', color: '#185FA5' }}>
+                              💙 ВКонтакте
+                            </a>
+                            <button onClick={() => { if (navigator.share) { navigator.share({ title: `Маршрут ${from} → ${to}`, text: `Маршрут на электромобиле: ${result.distance} км`, url: shareUrl }); } else copyShareUrl(); }}
+                              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition-colors"
+                              style={{ background: '#F1EFE8', color: '#5F5E5A' }}>
+                              📤 Ещё...
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {fromPoint && toPoint && (
                     <div>

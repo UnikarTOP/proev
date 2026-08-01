@@ -18,6 +18,7 @@ import { PagesModule } from './pages/pages.module';
 import { UsersModule } from './users/users.module';
 import { TripsModule } from './trips/trips.module';
 import { EvModelsModule } from './ev-models/ev-models.module';
+import { RoutesModule } from './routes/routes.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -53,6 +54,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     UsersModule,
     TripsModule,
     EvModelsModule,
+    RoutesModule,
   ],
   providers: [
     // Rate limiting применяется глобально

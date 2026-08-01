@@ -411,3 +411,29 @@ model EVModel {
   @@index([brand])
   @@index([connector])
 }
+
+model SavedRoute {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  fromName    String
+  fromLat     Float
+  fromLon     Float
+  toName      String
+  toLat       Float
+  toLon       Float
+  distance    Int
+  carBrand    String?
+  carModel    String?
+  consumption Float?
+  battery     Float?
+  speed       Int?
+  season      String?
+  chargeLevel Int?
+  stops       Int?
+  totalTimeMin Int?
+  energyNeeded Float?
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([code])
+}
