@@ -141,7 +141,7 @@ export default function RouteV2Client() {
         if (reachableKm >= totalDist && currentCharge > minCharge) break;
 
         // Ищем ближайшую станцию совместимого типа в зоне досягаемости
-        const userConnector = selectedModel.connector;
+        const userConnector = selectedModel?.connector ?? "";
         const reachable = availableStations.filter(s => {
           const stKm = s.progress * totalDist;
           if (stKm <= currentKm + 5 || stKm > safeReachKm) return false;
@@ -171,7 +171,7 @@ export default function RouteV2Client() {
         }
 
         // Из совместимых берём самую дальнюю, иначе любую самую дальнюю
-        const compatible = reachable.filter(s => s.connectorTypes.includes(selectedModel.connector));
+        const compatible = reachable.filter(s => s.connectorTypes.includes(selectedModel?.connector ?? ""));
         const pool = compatible.length > 0 ? compatible : reachable;
         const bestStation = pool.reduce((best, s) => s.progress > best.progress ? s : best, pool[0]);
         const stKm = bestStation.progress * totalDist;
@@ -202,7 +202,7 @@ export default function RouteV2Client() {
 
       const message = stops.length === 0
         ? `✅ Доедете без зарядки! Запаса ${Math.round(realRange * chargeLevel / 100)} км достаточно для ${Math.round(totalDist)} км.`
-        : `⚡ ${stops.length} ${stops.length === 1 ? 'остановка' : 'остановки'} на зарядку. Все станции совместимы с разъёмом ${selectedModel.connector}.`;
+        : `⚡ ${stops.length} ${stops.length === 1 ? 'остановка' : 'остановки'} на зарядку. Все станции совместимы с разъёмом ${selectedModel?.connector ?? ""}.`;
 
       setResult({
         distance: Math.round(totalDist), consumption: Math.round(cons * 10) / 10,
@@ -265,7 +265,7 @@ export default function RouteV2Client() {
                   { val: `${selectedModel.battery} кВт·ч`, label: 'батарея' },
                   { val: `${selectedModel.range} км`, label: 'WLTP' },
                   { val: `${selectedModel.consumption} кВт·ч/100`, label: 'расход' },
-                  { val: CONNECTOR_LABELS[selectedModel.connector] || selectedModel.connector, label: 'разъём' },
+                  { val: CONNECTOR_LABELS[selectedModel?.connector ?? ""] || (selectedModel?.connector ?? ""), label: 'разъём' },
                 ].map(f => (
                   <div key={f.label} className="bg-paper-50 border border-line rounded-xl p-2.5">
                     <div className="text-xs font-bold text-ink-900">{f.val}</div>
@@ -390,7 +390,7 @@ export default function RouteV2Client() {
                 </div>
               ) : !loadingStations ? (
                 <div className="text-center py-4 text-xs text-muted">
-                  {selectedModel ? `Нет станций с разъёмом ${selectedModel.connector} в ${corridor} км от маршрута` : 'Выберите авто для фильтрации по разъёму'}
+                  {selectedModel ? `Нет станций с разъёмом ${selectedModel?.connector ?? ""} в ${corridor} км от маршрута` : 'Выберите авто для фильтрации по разъёму'}
                 </div>
               ) : null}
             </div>
@@ -444,8 +444,8 @@ export default function RouteV2Client() {
                                   <span className="text-red-500">Приезд: {stop.arrivalCharge}% 🔋</span>
                                   <span className="text-muted">→</span>
                                   <span className="text-green-600">Отъезд: {stop.departureCharge}% 🔋</span>
-                                  {stop.station.connectorTypes.includes(selectedModel.connector)
-                                    ? <span className="text-green-600">✅ {CONNECTOR_LABELS[selectedModel.connector]} совместим</span>
+                                  {stop.station.connectorTypes.includes(selectedModel?.connector ?? "")
+                                    ? <span className="text-green-600">✅ {CONNECTOR_LABELS[selectedModel?.connector ?? ""]} совместим</span>
                                     : <span className="text-amber-600">⚠️ Уточните разъём</span>}
                                 </div>
                                 <div className="text-[10px] text-muted mt-0.5">
