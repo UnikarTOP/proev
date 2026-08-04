@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { GeoPoint, RouteResult as RouteGeo } from '@/lib/routing';
 
@@ -45,6 +46,7 @@ const fmtTime = (min: number) => { const h = Math.floor(min/60); const m = min%6
 
 export default function RoutePlannerPage() {
   const api = process.env.NEXT_PUBLIC_API_URL || '/api';
+  const router = useRouter();
 
   const [allModels, setAllModels] = useState<EVModel[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
@@ -84,6 +86,8 @@ export default function RoutePlannerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'route'|'economy'|'tips'>('route');
+  const [tripSaved, setTripSaved] = useState(false);
+  const [tripSaving, setTripSaving] = useState(false);
 
   // Вычисляемые значения (не хуки)
   const _base = useCustom && customConsumption ? Number(customConsumption) : selectedModel?.consumption ?? null;
@@ -158,6 +162,17 @@ export default function RoutePlannerPage() {
           if (!user) return;
           if (user.carBrand) setBrand(user.carBrand);
           if (user.carRange) setCustomRange(user.carRange);
+          // Автовыбор модели если совпадает
+          if (user.carBrand && user.carModel) {
+            const ms = allModels.filter((e: EVModel) => e.brand === user.carBrand);
+            if (ms.length > 0) {
+              const found = ms.find((m: EVModel) =>
+                m.model.toLowerCase().includes((user.carModel || '').toLowerCase()) ||
+                (user.carModel || '').toLowerCase().includes(m.model.toLowerCase().split(' ')[0])
+              );
+              if (found) setSelectedModel(found);
+            }
+          }
         }).catch(() => {});
     }
   }, []);
@@ -219,6 +234,36 @@ export default function RoutePlannerPage() {
     await navigator.clipboard.writeText(shareUrl);
     setShareCopied(true);
     setTimeout(() => setShareCopied(false), 2500);
+  };
+
+
+  const saveTrip = async () => {
+    if (!result) return;
+    const token = localStorage.getItem('user_token');
+    if (!token) { router.push('/login'); return; }
+    setTripSaving(true);
+    try {
+      await fetch(`${api}/trips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          date: new Date().toISOString(),
+          fromCity: from || 'Старт',
+          toCity: to || 'Финиш',
+          distanceKm: result.distance,
+          chargedKwh: result.energyNeeded,
+          cost: liveCostEv,
+          durationMin: result.totalTimeMin,
+          carBrand: selectedModel?.brand || brand || null,
+          carModel: selectedModel?.model || null,
+          stops: result.stops.length,
+          season,
+        }),
+      });
+      setTripSaved(true);
+      setTimeout(() => setTripSaved(false), 4000);
+    } catch { alert('Ошибка сохранения'); }
+    setTripSaving(false);
   };
 
   const calculate = () => {

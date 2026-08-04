@@ -42,6 +42,7 @@ export default function LoginClient() {
       if (tab === 'user') {
         localStorage.setItem('user_token', data.accessToken);
         localStorage.setItem('user', JSON.stringify(data.user));
+        window.dispatchEvent(new Event('storage'));
         router.push('/profile');
       } else {
         localStorage.setItem('partner_token', data.accessToken);

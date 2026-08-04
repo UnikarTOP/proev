@@ -379,6 +379,13 @@ model Trip {
   station     ChargingStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
   stationName String?  // если станции нет в БД
   city        String?
+  fromCity    String?  // откуда (для маршрутных поездок)
+  toCity      String?  // куда
+  distanceKm  Int?     // расстояние маршрута
+  carBrand    String?  // марка авто
+  carModel    String?  // модель авто
+  stops       Int?     // количество зарядных остановок
+  season      String?  // сезон поездки
   chargedKwh  Float?   // заряжено кВт·ч
   durationMin Int?     // время зарядки в минутах
   speedKw     Float?   // реальная скорость зарядки кВт

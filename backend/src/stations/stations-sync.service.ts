@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_MIRRORS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [5_000, 15_000, 45_000]; // 5s, 15s, 45s
 
@@ -63,11 +67,13 @@ export class StationsSyncService {
 
     let elements: any[] = [];
 
-    // Retry с exponential backoff
+    // Retry с перебором зеркал
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const mirror = OVERPASS_MIRRORS[attempt % OVERPASS_MIRRORS.length];
       try {
-        const res = await fetch(OVERPASS_URL, {
+        const res = await fetch(mirror, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `data=${encodeURIComponent(OVERPASS_QUERY)}`,
           signal: AbortSignal.timeout(90_000),
         });
@@ -78,7 +84,7 @@ export class StationsSyncService {
 
         const data = await res.json();
         elements = data.elements || [];
-        this.logger.log(`OSM: получено ${elements.length} объектов (попытка ${attempt + 1})`);
+        this.logger.log(`OSM: получено ${elements.length} объектов с ${mirror} (попытка ${attempt + 1})`);
         break; // успех — выходим из цикла retry
 
       } catch (err) {

@@ -115,18 +115,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           <script dangerouslySetInnerHTML={{ __html: `
-            (function(){
+            function updateHeaderAuth() {
               var t = localStorage.getItem('user_token');
               var u = localStorage.getItem('user');
               var btn = document.getElementById('header-login-btn');
-              if(t && u && btn) {
+              if (!btn) return;
+              if (t && u) {
                 try {
                   var name = JSON.parse(u).name || 'Профиль';
                   btn.href = '/profile';
                   btn.textContent = name.split(' ')[0];
-                } catch(e){}
+                  btn.style.fontWeight = '500';
+                } catch(e) {}
+              } else {
+                btn.href = '/login';
+                btn.textContent = 'Войти';
               }
-            })();
+            }
+            updateHeaderAuth();
+            window.addEventListener('storage', updateHeaderAuth);
+            window.addEventListener('focus', updateHeaderAuth);
           `}} />
         </header>
 

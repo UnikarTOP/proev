@@ -78,7 +78,7 @@ export default function RouteV2Client() {
   const [targetCharge, setTargetCharge] = useState(78);
   const [speed, setSpeed] = useState(100);
   const [season, setSeason] = useState('mixed');
-  const [corridor, setCorridor] = useState(25); // км от прямой
+  const [corridor, setCorridor] = useState(50); // км от прямой
 
   const [stations, setStations] = useState<Station[]>([]);
   const [result, setResult] = useState<RouteResult | null>(null);
@@ -130,10 +130,12 @@ export default function RouteV2Client() {
       let currentCharge = chargeLevel;
       const availableStations = [...stations].sort((a, b) => a.progress - b.progress);
 
+      const fullRangeKm = battery / cons * 100; // запас при 100% заряде
+
       while (currentKm < totalDist) {
-        const currentRangeKm = battery * (currentCharge / 100) / cons * 100;
+        const currentRangeKm = fullRangeKm * (currentCharge / 100);
         const reachableKm = currentKm + currentRangeKm;
-        const safeReachKm = currentKm + battery * ((currentCharge - minCharge) / 100) / cons * 100;
+        const safeReachKm = currentKm + fullRangeKm * ((currentCharge - minCharge) / 100);
 
         // Если доедем до конца — стоп
         if (reachableKm >= totalDist && currentCharge > minCharge) break;
@@ -162,7 +164,7 @@ export default function RouteV2Client() {
             chargingTimeMin: 0, totalTimeMin: Math.round(totalDist / speed * 60),
             energyNeeded: Math.round(totalDist * cons / 100 * 10) / 10,
             canComplete: false,
-            message: `⚠️ Не найдено зарядных станций в радиусе ${corridor} км от маршрута. Попробуйте увеличить коридор поиска или проверьте данные о станциях.`,
+            message: `⚠️ Нет зарядных станций между ${Math.round(currentKm)} и ${Math.round(currentKm + safeReachKm)} км маршрута (в радиусе ${corridor} км). Попробуйте: увеличить коридор поиска, выбрать другой разъём или проверить наличие станций на этом участке.`,
           });
           setLoading(false);
           return;
@@ -179,7 +181,7 @@ export default function RouteV2Client() {
 
         // Заряжаем до targetCharge%
         const chargeKwh = battery * (targetCharge - arrivalCharge) / 100;
-        const avgPower = Math.min(selectedModel.maxChargeDC, selectedModel.maxChargeDC) * 0.68;
+        const avgPower = selectedModel.maxChargeDC * 0.68;
         const chargeTimeMin = Math.round(chargeKwh / Math.max(avgPower, 7) * 60) + 7;
 
         stops.push({
@@ -361,6 +363,11 @@ export default function RouteV2Client() {
                   <span className="text-xs font-semibold text-volt-600">{stations.length} станций</span>
                 )}
               </div>
+              {stations.length > 0 && stations.filter(s => s.progress > 0.1 && s.progress < 0.9).length === 0 && (
+                <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                  ⚠️ Станции найдены только у старта и финиша. На середине маршрута покрытие отсутствует в нашей базе.
+                </div>
+              )}
               {stations.length > 0 ? (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {stations.map(s => (
@@ -437,8 +444,8 @@ export default function RouteV2Client() {
                                   <span className="text-red-500">Приезд: {stop.arrivalCharge}% 🔋</span>
                                   <span className="text-muted">→</span>
                                   <span className="text-green-600">Отъезд: {stop.departureCharge}% 🔋</span>
-                                  {stop.station.connectorTypes.includes(selectedModel?.connector || "")
-                                    ? <span className="text-green-600">✅ {CONNECTOR_LABELS[selectedModel?.connector || ""]} совместим</span>
+                                  {stop.station.connectorTypes.includes(selectedModel.connector)
+                                    ? <span className="text-green-600">✅ {CONNECTOR_LABELS[selectedModel.connector]} совместим</span>
                                     : <span className="text-amber-600">⚠️ Уточните разъём</span>}
                                 </div>
                                 <div className="text-[10px] text-muted mt-0.5">
@@ -470,6 +477,68 @@ export default function RouteV2Client() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Кнопки навигатора с промежуточными точками */}
+                  {fromPoint && toPoint && (() => {
+                    // Строим маршрут: старт → зарядки → финиш
+                    const waypoints = [
+                      fromPoint,
+                      ...result.stops.map(s => ({ lat: s.station.latitude, lon: s.station.longitude, name: s.station.name })),
+                      toPoint,
+                    ];
+
+                    // Яндекс Карты: rtext=lat,lon~lat,lon~...
+                    const yandexRoute = waypoints.map(p => `${p.lat},${p.lon}`).join('~');
+                    const yandexUrl = `https://yandex.ru/maps/?rtext=${yandexRoute}&rtt=auto`;
+
+                    // Яндекс Навигатор (мобильный deeplink) — поддерживает до 3 точек
+                    const yandexNav = waypoints.length <= 3
+                      ? `yandexnavi://build_route_on_map?lat_from=${waypoints[0].lat}&lon_from=${waypoints[0].lon}&lat_to=${waypoints[waypoints.length-1].lat}&lon_to=${waypoints[waypoints.length-1].lon}`
+                      : null;
+
+                    // 2ГИС: поддерживает только from → to, добавляем зарядки как текст
+                    const gisUrl = `https://2gis.ru/routeSearch/rsType/car/from/${fromPoint.lon},${fromPoint.lat}/${encodeURIComponent(from)}/to/${toPoint.lon},${toPoint.lat}/${encodeURIComponent(to)}`;
+                    const gisMobile = `dgis://2gis.ru/routeSearch/rsType/car/from/${fromPoint.lon},${fromPoint.lat}/to/${toPoint.lon},${toPoint.lat}`;
+
+                    return (
+                      <div className="bg-white border border-line rounded-xl p-4">
+                        <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
+                          Открыть маршрут в навигаторе
+                          {result.stops.length > 0 && <span className="ml-2 text-volt-600 normal-case font-normal">· {result.stops.length} зарядки включены</span>}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <a href={yandexUrl} target="_blank" rel="noopener noreferrer"
+                            onClick={e => {
+                              if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+                                e.preventDefault();
+                                const nav = yandexNav || yandexUrl;
+                                window.location.href = nav;
+                                setTimeout(() => window.open(yandexUrl, '_blank'), 2000);
+                              }
+                            }}
+                            className="flex items-center justify-center gap-2 py-3 border border-line rounded-xl text-sm font-medium hover:bg-paper-50 transition-colors no-underline text-ink-900">
+                            🗺️ Яндекс Карты
+                          </a>
+                          <a href={gisUrl} target="_blank" rel="noopener noreferrer"
+                            onClick={e => {
+                              if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+                                e.preventDefault();
+                                window.location.href = gisMobile;
+                                setTimeout(() => window.open(gisUrl, '_blank'), 2000);
+                              }
+                            }}
+                            className="flex items-center justify-center gap-2 py-3 border border-line rounded-xl text-sm font-medium hover:bg-paper-50 transition-colors no-underline text-ink-900">
+                            📍 2ГИС
+                          </a>
+                        </div>
+                        {result.stops.length > 0 && (
+                          <p className="text-[10px] text-muted mt-2 text-center">
+                            Яндекс Карты включает все {result.stops.length + 2} точки маршрута. 2ГИС — только старт и финиш.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </>
               )}
             </div>
