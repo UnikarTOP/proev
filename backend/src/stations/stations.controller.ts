@@ -116,67 +116,20 @@ export class StationsController {
     return this.syncService.syncOsm();
   }
 
-  // GET /api/stations/along-route?lat1=&lon1=&lat2=&lon2=&radiusKm=30
-  // Возвращает станции в коридоре вдоль прямой между двумя точками
   @SkipThrottle()
   @Get('along-route')
   async getAlongRoute(
-    @Query('lat1') lat1: string,
-    @Query('lon1') lon1: string,
-    @Query('lat2') lat2: string,
-    @Query('lon2') lon2: string,
-    @Query('radiusKm') radiusKm = '30',
-    @Query('connector') connector?: string,
-  ) {
-    const r = parseFloat(radiusKm) || 30;
-    const p1 = { lat: parseFloat(lat1), lon: parseFloat(lon1) };
-    const p2 = { lat: parseFloat(lat2), lon: parseFloat(lon2) };
-
-    if (isNaN(p1.lat) || isNaN(p2.lat)) return [];
-
-    // Bounding box вокруг маршрута
-    const minLat = Math.min(p1.lat, p2.lat) - r / 111;
-    const maxLat = Math.max(p1.lat, p2.lat) + r / 111;
-    const minLon = Math.min(p1.lon, p2.lon) - r / (111 * Math.cos(p1.lat * Math.PI / 180));
-    const maxLon = Math.max(p1.lon, p2.lon) + r / (111 * Math.cos(p1.lat * Math.PI / 180));
-
-    const where: any = {
-      latitude: { gte: minLat, lte: maxLat },
-      longitude: { gte: minLon, lte: maxLon },
-      status: { not: 'offline' },
-    };
-
-    if (connector) {
-      where.connectorTypes = { has: connector };
-    }
-
-    const stations = await (this.stationsService as any).prisma.chargingStation.findMany({
-      where,
-      select: {
-        id: true, name: true, address: true,
-        latitude: true, longitude: true,
-        connectorTypes: true, status: true,
-      },
-      take: 200,
+    @Query('lat1') lat1: string, @Query('lon1') lon1: string,
+    @Query('lat2') lat2: string, @Query('lon2') lon2: string,
+    @Query('radiusKm') radiusKm = '25', @Query('connector') connector?: string,
+  ): Promise<any[]> {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return [];
+    return this.stationsService.findAlongRoute({
+      lat1: parseFloat(lat1), lon1: parseFloat(lon1),
+      lat2: parseFloat(lat2), lon2: parseFloat(lon2),
+      radiusKm: parseFloat(radiusKm) || 25,
+      connector: connector || undefined,
     });
-
-    // Фильтруем по реальному расстоянию до линии маршрута
-    interface StationWithDist {
-      id: string; name: string; address: string | null;
-      latitude: number; longitude: number;
-      connectorTypes: string[]; status: string;
-      distanceKm: number; progress: number;
-    }
-    const result: StationWithDist[] = (stations as any[])
-      .map((s: any) => {
-        const dist = pointToLineDistance(s.latitude, s.longitude, p1, p2);
-        const progress = projectOnLine(s.latitude, s.longitude, p1, p2);
-        return { ...s, distanceKm: Math.round(dist * 10) / 10, progress };
-      })
-      .filter((s: StationWithDist) => s.distanceKm <= r && s.progress >= 0.02 && s.progress <= 0.98)
-      .sort((a: StationWithDist, b: StationWithDist) => a.progress - b.progress);
-
-    return result;
   }
 
 }

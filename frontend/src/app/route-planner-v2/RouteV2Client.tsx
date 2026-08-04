@@ -118,8 +118,8 @@ export default function RouteV2Client() {
     if (!selectedModel) return setError('Выберите электромобиль');
 
     const totalDist = haversine(fromPoint.lat, fromPoint.lon, toPoint.lat, toPoint.lon) * 1.22;
-    const cons = selectedModel.consumption * speedFactor(speed) * seasonFactor(season);
-    const battery = selectedModel.battery;
+    const cons = selectedModel!.consumption * speedFactor(speed) * seasonFactor(season);
+    const battery = selectedModel!.battery;
     const realRange = battery / cons * 100;
 
     setLoading(true);
@@ -181,7 +181,7 @@ export default function RouteV2Client() {
 
         // Заряжаем до targetCharge%
         const chargeKwh = battery * (targetCharge - arrivalCharge) / 100;
-        const avgPower = selectedModel.maxChargeDC * 0.68;
+        const avgPower = selectedModel!.maxChargeDC * 0.68;
         const chargeTimeMin = Math.round(chargeKwh / Math.max(avgPower, 7) * 60) + 7;
 
         stops.push({
@@ -262,9 +262,9 @@ export default function RouteV2Client() {
             {selectedModel && (
               <div className="grid grid-cols-4 gap-2 text-center">
                 {[
-                  { val: `${selectedModel.battery} кВт·ч`, label: 'батарея' },
-                  { val: `${selectedModel.range} км`, label: 'WLTP' },
-                  { val: `${selectedModel.consumption} кВт·ч/100`, label: 'расход' },
+                  { val: `${selectedModel?.battery} кВт·ч`, label: 'батарея' },
+                  { val: `${selectedModel?.range} км`, label: 'WLTP' },
+                  { val: `${selectedModel?.consumption} кВт·ч/100`, label: 'расход' },
                   { val: CONNECTOR_LABELS[selectedModel?.connector ?? ""] || (selectedModel?.connector ?? ""), label: 'разъём' },
                 ].map(f => (
                   <div key={f.label} className="bg-paper-50 border border-line rounded-xl p-2.5">

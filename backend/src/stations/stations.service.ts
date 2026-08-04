@@ -148,4 +148,34 @@ export class StationsService {
     ]);
     return { stationCount, cityCount: cities.length };
   }
+
+  async findAlongRoute(params: { lat1: number; lon1: number; lat2: number; lon2: number; radiusKm: number; connector?: string }) {
+    const { lat1, lon1, lat2, lon2, radiusKm: r } = params;
+    const minLat = Math.min(lat1, lat2) - r / 111;
+    const maxLat = Math.max(lat1, lat2) + r / 111;
+    const minLon = Math.min(lon1, lon2) - r / (111 * Math.cos(lat1 * Math.PI / 180));
+    const maxLon = Math.max(lon1, lon2) + r / (111 * Math.cos(lat1 * Math.PI / 180));
+    const stations = await this.prisma.chargingStation.findMany({
+      where: { latitude: { gte: minLat, lte: maxLat }, longitude: { gte: minLon, lte: maxLon } },
+      select: { id: true, name: true, address: true, latitude: true, longitude: true, connectorTypes: true, status: true },
+      take: 300,
+    });
+    const hav = (a: {lat:number,lon:number}, b: {lat:number,lon:number}) => {
+      const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lon-a.lon)*Math.PI/180;
+      const h=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+      return 2*R*Math.asin(Math.sqrt(h));
+    };
+    const p1={lat:lat1,lon:lon1}, p2={lat:lat2,lon:lon2};
+    const d12=hav(p1,p2);
+    return stations.map((s: any) => {
+      const d1p=hav(p1,{lat:s.latitude,lon:s.longitude}), d2p=hav(p2,{lat:s.latitude,lon:s.longitude});
+      const cos=(d1p**2+d12**2-d2p**2)/(2*d1p*d12);
+      const dist=cos<=0?d1p:cos>=1?d2p:d1p*Math.sqrt(1-cos**2);
+      const dx=p2.lon-p1.lon, dy=p2.lat-p1.lat;
+      const progress=Math.max(0,Math.min(1,((s.longitude-p1.lon)*dx+(s.latitude-p1.lat)*dy)/(dx*dx+dy*dy)));
+      return { ...s, distanceKm: Math.round(dist*10)/10, progress };
+    }).filter((s: any) => s.distanceKm <= r && s.progress >= 0.02 && s.progress <= 0.98)
+      .sort((a: any, b: any) => a.progress - b.progress);
+  }
+
 }
