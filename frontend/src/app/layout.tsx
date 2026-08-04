@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: 'Карта зарядных станций, каталог EV-сервисов, новости об электромобилях. Всё для владельцев электромобилей в России.',
   keywords: ['электромобили', 'зарядные станции', 'EV сервис', 'карта зарядок', 'электрокары Россия'],
   authors: [{ name: 'proev.ru', url: 'https://proev.ru' }],
+  verification: { yandex: 'fjou1tf7z0wcb1vp' },
   metadataBase: new URL('https://proev.ru'),
   openGraph: {
     type: 'website',
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {/* Группа 1 — инфраструктура */}
               <a href="/charge-map" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Карта зарядок</a>
               <a href="/services" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Сервисы</a>
+              <a href="/blog" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Блог</a>
               <a href="/news" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Новости</a>
 
               {/* Разделитель */}
@@ -205,7 +207,8 @@ function MobileMenu() {
       <div className="hidden peer-checked:flex flex-col absolute right-0 top-full mt-2 w-52 bg-white border border-line rounded-xl shadow-lg overflow-hidden z-50">
         <a href="/charge-map" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Карта зарядок</a>
         <a href="/services" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Сервисы</a>
-        <a href="/news" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Новости</a>
+        <a href="/blog" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Блог</a>
+              <a href="/news" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Новости</a>
         <a href="/about" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">О проекте</a>
         <a href="/pricing" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Тарифы</a>
         <a href="/partner" className="px-4 py-3 text-sm font-semibold text-volt-600 hover:bg-paper-50">Разместить сервис</a>
