@@ -182,7 +182,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
             <div className="border-t border-line pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
-              <p className="text-xs text-muted">© {new Date().getFullYear()} proev.ru — все права защищены</p>
+              <p className="text-xs text-muted">© 2026 proev.ru — все права защищены</p>
               <p className="text-xs text-muted">
                 <a href="mailto:hello@proev.ru" className="hover:text-ink-900 transition-colors">hello@proev.ru</a>
               </p>
