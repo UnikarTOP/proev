@@ -116,12 +116,16 @@ export class StationsController {
     return this.syncService.syncOsm();
   }
 
+  // GET /api/stations/along-route?lat1=&lon1=&lat2=&lon2=&radiusKm=30
   @SkipThrottle()
   @Get('along-route')
   async getAlongRoute(
-    @Query('lat1') lat1: string, @Query('lon1') lon1: string,
-    @Query('lat2') lat2: string, @Query('lon2') lon2: string,
-    @Query('radiusKm') radiusKm = '25', @Query('connector') connector?: string,
+    @Query('lat1') lat1: string,
+    @Query('lon1') lon1: string,
+    @Query('lat2') lat2: string,
+    @Query('lon2') lon2: string,
+    @Query('radiusKm') radiusKm = '25',
+    @Query('connector') connector?: string,
   ): Promise<any[]> {
     if (!lat1 || !lon1 || !lat2 || !lon2) return [];
     return this.stationsService.findAlongRoute({

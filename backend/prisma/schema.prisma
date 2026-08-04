@@ -253,16 +253,25 @@ model LeadHistory {
 }
 
 model Article {
-  id          String   @id @default(uuid())
-  title       String
-  slug        String   @unique
-  content     String
-  coverImage  String?
-  authorId    String?
-  author      User?    @relation(fields: [authorId], references: [id])
-  seoMeta     Json?
-  publishedAt DateTime?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid())
+  title        String
+  slug         String   @unique
+  description  String?  // meta description + excerpt
+  content      String   // HTML
+  category     String?  // Зарядки, Обзоры EV, Финансы, Маршруты
+  keywords     String[] // SEO keywords
+  readTime     Int?     // минут на чтение
+  coverImage   String?
+  authorId     String?
+  author       User?    @relation(fields: [authorId], references: [id])
+  seoTitle     String?  // переопределяет title для SEO
+  seoMeta      Json?
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([publishedAt])
+  @@index([category])
 }
 
 enum NewsStatus {
