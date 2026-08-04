@@ -110,6 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="w-px h-4 bg-line mx-2 flex-shrink-0" />
 
               {/* Группа 3 — бизнес */}
+              <a href="/osago" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex items-center gap-1">🛡️ ОСАГО</a>
               <a href="/pricing" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Тарифы</a>
               <a href="/about" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">О проекте</a>
             </nav>
@@ -210,7 +211,8 @@ function MobileMenu() {
         <a href="/blog" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">Блог</a>
               <a href="/news" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Новости</a>
         <a href="/about" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">О проекте</a>
-        <a href="/pricing" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Тарифы</a>
+        <a href="/osago" className="text-sm text-muted hover:text-ink-900 hover:bg-paper-50 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex items-center gap-1">🛡️ ОСАГО</a>
+              <a href="/pricing" className="px-4 py-3 text-sm font-medium text-ink-900 hover:bg-paper-50 border-b border-line">Тарифы</a>
         <a href="/partner" className="px-4 py-3 text-sm font-semibold text-volt-600 hover:bg-paper-50">Разместить сервис</a>
       </div>
     </div>
