@@ -325,6 +325,17 @@ export default function EVCatalogPage() {
           <p>Ничего не найдено. Попробуйте изменить фильтры.</p>
         </div>
       )}
+      {/* Партнёрский блок — ОСАГО */}
+      <a href="https://go.sravni.ru/aff_c?aff_id=101339&offer_id=1064&source=10640&out=https%3A%2F%2Fwww.sravni.ru%2Fosago%2F%3F" target="_blank" rel="noopener noreferrer sponsored"
+        className="mt-8 flex items-center gap-4 bg-gradient-to-r from-[#0B4DB8] to-[#1565D8] rounded-2xl p-5 no-underline hover:opacity-95 transition-opacity group">
+        <span className="text-3xl">🛡️</span>
+        <div className="flex-1">
+          <div className="text-white font-bold text-sm">Оформите ОСАГО для электромобиля онлайн</div>
+          <div className="text-white/70 text-xs mt-0.5">Сравните цены от 25+ страховых компаний · Экономия до 40%</div>
+        </div>
+        <span className="flex-shrink-0 bg-white text-[#0B4DB8] text-xs font-bold px-4 py-2 rounded-xl whitespace-nowrap">Рассчитать →</span>
+      </a>
+      <p className="text-right text-[10px] text-muted mt-1">Реклама · Сравни.ру</p>
     </div>
   );
 }
